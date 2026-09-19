@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" role="img" aria-labelledby="title desc">
+  <title id="title">Mechanical keyboard</title>
+  <desc id="desc">Illustration of a compact mechanical keyboard.</desc>
+  <defs>
+    <linearGradient id="keyboardBg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#edf3ef"/>
+      <stop offset="1" stop-color="#f7e6dd"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="540" rx="36" fill="url(#keyboardBg)"/>
+  <rect x="112" y="168" width="496" height="232" rx="34" fill="#252827"/>
+  <rect x="139" y="194" width="442" height="154" rx="18" fill="#373b39"/>
+  <g fill="#fdfcf8">
+    <rect x="162" y="216" width="44" height="32" rx="6"/>
+    <rect x="216" y="216" width="44" height="32" rx="6"/>
+    <rect x="270" y="216" width="44" height="32" rx="6"/>
+    <rect x="324" y="216" width="44" height="32" rx="6"/>
+    <rect x="378" y="216" width="44" height="32" rx="6"/>
+    <rect x="432" y="216" width="44" height="32" rx="6"/>
+    <rect x="486" y="216" width="68" height="32" rx="6"/>
+    <rect x="162" y="262" width="60" height="32" rx="6"/>
+    <rect x="232" y="262" width="44" height="32" rx="6"/>
+    <rect x="286" y="262" width="44" height="32" rx="6"/>
+    <rect x="340" y="262" width="44" height="32" rx="6"/>
+    <rect x="394" y="262" width="44" height="32" rx="6"/>
+    <rect x="448" y="262" width="106" height="32" rx="6"/>
+    <rect x="162" y="308" width="78" height="32" rx="6"/>
+    <rect x="250" y="308" width="44" height="32" rx="6"/>
+    <rect x="304" y="308" width="44" height="32" rx="6"/>
+    <rect x="358" y="308" width="44" height="32" rx="6"/>
+    <rect x="412" y="308" width="142" height="32" rx="6"/>
+  </g>
+  <rect x="162" y="363" width="246" height="18" rx="9" fill="#117568"/>
+  <rect x="428" y="363" width="126" height="18" rx="9" fill="#d85643"/>
+  <circle cx="580" cy="180" r="36" fill="#f3b84f"/>
+</svg>

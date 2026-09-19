@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IAS2 Commerce</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" data-action="go-shop" aria-label="IAS2 Commerce home">
+          <span class="brand-mark">IA</span>
+          <span class="brand-copy">
+            <strong>IAS2 Commerce</strong>
+            <small>Store and admin</small>
+          </span>
+        </a>
+
+        <nav class="nav-actions" aria-label="Main navigation">
+          <button class="nav-button is-active" type="button" data-view="shop">
+            <i data-lucide="store"></i>
+            <span>Shop</span>
+          </button>
+          <button class="nav-button" type="button" data-view="orders">
+            <i data-lucide="package-check"></i>
+            <span>Orders</span>
+          </button>
+          <button class="nav-button is-admin hidden" type="button" data-view="admin">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Admin</span>
+          </button>
+          <button class="nav-button cart-button" type="button" data-action="open-cart">
+            <i data-lucide="shopping-cart"></i>
+            <span>Cart</span>
+            <strong id="cartCount">0</strong>
+          </button>
+          <span class="user-badge hidden" id="userBadge"></span>
+          <button class="primary-button" type="button" id="authButton" data-action="open-auth" data-mode="login">
+            Login
+          </button>
+        </nav>
+      </header>
+
+      <main class="content-shell">
+        <section class="store-toolbar" id="storeToolbar">
+          <div class="field search-field">
+            <label for="searchInput">Search</label>
+            <div class="field-control with-icon">
+              <i data-lucide="search"></i>
+              <input id="searchInput" type="search" placeholder="Search items" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="categoryFilter">Category</label>
+            <select id="categoryFilter"></select>
+          </div>
+
+          <div class="field">
+            <label for="sortFilter">Sort</label>
+            <select id="sortFilter">
+              <option value="featured">Featured</option>
+              <option value="priceLow">Price low to high</option>
+              <option value="priceHigh">Price high to low</option>
+              <option value="stock">Stock available</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="view-root" id="viewRoot" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <aside class="cart-drawer hidden" id="cartDrawer" aria-label="Shopping cart">
+      <div class="drawer-panel">
+        <div class="drawer-header">
+          <div>
+            <p class="eyebrow">Cart</p>
+            <h2>Selected Items</h2>
+          </div>
+          <button class="icon-button" type="button" data-action="close-cart" aria-label="Close cart">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="cart-lines" id="cartLines"></div>
+        <div class="cart-summary">
+          <span>Total</span>
+          <strong id="cartTotal">PHP 0</strong>
+        </div>
+        <button class="primary-button wide" type="button" data-action="open-checkout">Checkout</button>
+      </div>
+    </aside>
+
+    <div class="modal-layer hidden" id="authModal">
+      <div class="modal-panel auth-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow" id="authEyebrow">Account</p>
+            <h2 id="authTitle">Login</h2>
+          </div>
+          <button class="icon-button" type="button" data-action="close-modal" aria-label="Close account form">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="segmented-control" role="tablist" aria-label="Account mode">
+          <button class="is-active" type="button" data-action="switch-auth" data-mode="login">Login</button>
+          <button type="button" data-action="switch-auth" data-mode="register">Register</button>
+        </div>
+
+        <form class="form-grid" id="authForm"></form>
+      </div>
+    </div>
+
+    <div class="modal-layer hidden" id="checkoutModal">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Payment</p>
+            <h2 id="checkoutTitle">Checkout</h2>
+          </div>
+          <button class="icon-button" type="button" data-action="close-checkout" aria-label="Close checkout">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <form class="form-grid" id="checkoutForm">
+          <div class="field">
+            <label for="checkoutName">Name</label>
+            <input id="checkoutName" name="name" required />
+          </div>
+          <div class="field">
+            <label for="checkoutAddress">Delivery Address</label>
+            <textarea id="checkoutAddress" name="address" rows="3" required></textarea>
+          </div>
+          <div class="field split-field">
+            <span>
+              <label for="paymentMethod">Method</label>
+              <select id="paymentMethod" name="method" required>
+                <option value="Card">Card</option>
+                <option value="GCash">GCash</option>
+                <option value="Cash on Delivery">Cash on Delivery</option>
+              </select>
+            </span>
+            <span>
+              <label for="paymentReference">Reference</label>
+              <input id="paymentReference" name="reference" placeholder="Last 4 or ref no." required />
+            </span>
+          </div>
+          <button class="primary-button wide" type="submit">Pay and Place Order</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-layer hidden" id="entityModal"></div>
+    <div class="toast-area" id="toastArea" aria-live="polite"></div>
+  </body>
+</html>
