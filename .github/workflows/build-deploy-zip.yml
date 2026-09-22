@@ -39,7 +39,7 @@ jobs:
 
       - name: Verify required files exist
         run: |
-          for f in index.html styles.css js/main.js assets/placeholder.svg; do
+          for f in index.html styles.css js/main.js assets/placeholder.svg 404.html .htaccess; do
             if [ ! -f "$f" ]; then
               echo "::error::Missing required file: $f"
               exit 1
@@ -49,10 +49,10 @@ jobs:
       - name: Build InfinityFree deploy zip
         run: |
           mkdir -p dist
-          cp index.html styles.css README.md dist/
+          cp index.html styles.css README.md 404.html .htaccess dist/
           cp -r js assets dist/
           cd dist
-          zip -qr ../ias2-deploy.zip index.html styles.css js assets README.md
+          zip -qr ../ias2-deploy.zip index.html styles.css 404.html .htaccess js assets README.md
           cd ..
           rm -rf dist
           echo "Zip contents:"

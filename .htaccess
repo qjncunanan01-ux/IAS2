@@ -1,0 +1,33 @@
+# IAS2 Commerce — production hardening (InfinityFree / Apache)
+
+# Serve index.html for directory requests, block directory listings
+DirectoryIndex index.html
+Options -Indexes
+
+# Cache policy: HTML stays fresh so new deploys appear immediately,
+# assets cache for a while since they only change on rebuild.
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(css|js|svg)$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+  <FilesMatch "\.(jpg|jpeg|png|webp|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+
+  # Basic security headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Friendly 404 page instead of the hosting default
+ErrorDocument 404 /404.html
+
+# Force HTTPS if the host is not local
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
