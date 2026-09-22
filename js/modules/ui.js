@@ -2,7 +2,7 @@ import { state } from "./state.js";
 import { escapeHtml, escapeAttribute, formatMoney, formatDate } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable, debounce } from "../utils/helpers.js";
 import { showToast, showError, showSuccess, showWarning } from "../components/toast.js";
-import { renderEmptyState, renderLockedState, renderOrderCard } from "../components/render-helpers.js";
+import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js";
 import { getCurrentUser, isAdmin, ensureCurrentUserExists } from "./auth.js";
 import { openAuth, closeAuth, login, register, logout } from "./auth.js";
 import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js";
@@ -219,6 +219,12 @@ export function render() {
   renderCategoryFilter();
   renderCart();
 
+  if (els.viewRoot) {
+    // data-active-view (NOT data-view: [data-view] elements are nav buttons in
+    // handleClick, and an attribute here would swallow every click below it).
+    els.viewRoot.dataset.activeView = state.view;
+  }
+
   if (els.storeToolbar) {
     els.storeToolbar.classList.toggle("hidden", state.view !== "shop");
   }
@@ -414,10 +420,26 @@ function renderAdmin() {
         </div>
       </div>
       <div class="metrics-grid">
-        <div class="metric-tile"><span>Users</span><strong>${metrics.users}</strong></div>
-        <div class="metric-tile"><span>Items</span><strong>${metrics.items}</strong></div>
-        <div class="metric-tile"><span>Orders</span><strong>${metrics.orders}</strong></div>
-        <div class="metric-tile"><span>Sales</span><strong>${formatMoney(metrics.sales)}</strong></div>
+        <div class="metric-tile tile-users">
+          <span class="metric-icon"><i data-lucide="users"></i></span>
+          <span>Users</span>
+          <strong>${metrics.users}</strong>
+        </div>
+        <div class="metric-tile tile-items">
+          <span class="metric-icon"><i data-lucide="package"></i></span>
+          <span>Items</span>
+          <strong>${metrics.items}</strong>
+        </div>
+        <div class="metric-tile tile-orders">
+          <span class="metric-icon"><i data-lucide="receipt"></i></span>
+          <span>Orders</span>
+          <strong>${metrics.orders}</strong>
+        </div>
+        <div class="metric-tile tile-sales">
+          <span class="metric-icon"><i data-lucide="banknote"></i></span>
+          <span>Sales</span>
+          <strong>${formatMoney(metrics.sales)}</strong>
+        </div>
       </div>
       <div class="admin-tabs" role="tablist" aria-label="Admin sections">
         ${renderAdminTab("items", "Items")}
@@ -480,7 +502,7 @@ function renderItemsPanel() {
           ${state.items.map((item) => `
             <tr class="${Number(item.stock) <= 5 && item.active ? "low-stock" : ""}">
               <td data-label="Name">${escapeHtml(item.name)}</td>
-              <td data-label="Category">${escapeHtml(item.category)}</td>
+              <td data-label="Category">${renderCategoryChip(item.category)}</td>
               <td data-label="Price">${formatMoney(item.price)}</td>
               <td data-label="Stock">${Number(item.stock)}${Number(item.stock) <= 5 && item.active ? ' <span class="status-pill warning">Low</span>' : ''}</td>
               <td data-label="Status"><span class="status-pill ${item.active ? "paid" : "cancelled"}">${item.active ? "Active" : "Inactive"}</span></td>
@@ -597,7 +619,7 @@ function renderCategoriesPanel() {
             const totalStock = itemsInCat.reduce((sum, i) => sum + Number(i.stock), 0);
             return `
               <tr>
-                <td data-label="Category">${escapeHtml(category)}</td>
+                <td data-label="Category">${renderCategoryChip(category)}</td>
                 <td data-label="Items">${itemsInCat.length}</td>
                 <td data-label="Total Stock">${totalStock}</td>
                 <td data-label="Actions">

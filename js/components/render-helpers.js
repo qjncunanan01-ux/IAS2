@@ -1,6 +1,21 @@
 import { escapeHtml, escapeAttribute, formatMoney, formatDate, statusClass, refreshIcons } from "../utils/helpers.js";
 import { state } from "../modules/state.js";
 
+// Stable hue per category name: same name -> same color, everywhere.
+const categoryHues = new Map();
+
+function categoryHue(category) {
+  if (!categoryHues.has(category)) {
+    categoryHues.set(category, categoryHues.size % 8);
+  }
+  return categoryHues.get(category);
+}
+
+export function renderCategoryChip(category) {
+  const hue = categoryHue(String(category));
+  return `<span class="chip hue-${hue}" data-hue="${hue}">${escapeHtml(category)}</span>`;
+}
+
 export function renderEmptyState(title, copy, actionHtml) {
   return `
     <div class="empty-state">
@@ -31,7 +46,7 @@ export function renderProductCard(item) {
   return `
     <article class="product-card">
       <figure class="product-media">
-        <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
+        <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" loading="lazy" />
         <button class="quick-view-button icon-button" type="button" data-action="quick-view" data-id="${escapeAttribute(item.id)}" aria-label="Quick view ${escapeAttribute(item.name)}">
           <i data-lucide="eye"></i>
         </button>
@@ -42,7 +57,7 @@ export function renderProductCard(item) {
           <strong class="price">${formatMoney(item.price)}</strong>
         </div>
         <div class="tag-row">
-          <span class="chip">${escapeHtml(item.category)}</span>
+          ${renderCategoryChip(item.category)}
           ${renderStockChip(item)}
         </div>
         <p>${escapeHtml(item.description)}</p>

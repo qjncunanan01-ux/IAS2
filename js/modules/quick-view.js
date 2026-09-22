@@ -3,7 +3,7 @@ import { escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { closeEntity } from "./modals.js";
 import { addToCart } from "./cart.js";
-import { renderStockChip } from "../components/render-helpers.js";
+import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js";
 
 let els = {};
 
@@ -48,7 +48,7 @@ function renderQuickView(item) {
         <div class="quick-view-info">
           <div class="quick-view-price">${formatMoney(item.price)}</div>
           <div class="tag-row">
-            <span class="chip">${escapeHtml(item.category)}</span>
+            ${renderCategoryChip(item.category)}
             ${renderStockChip(item)}
             <span class="status-pill ${item.active ? "paid" : "cancelled"}">${item.active ? "Active" : "Inactive"}</span>
           </div>

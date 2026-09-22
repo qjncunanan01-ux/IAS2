@@ -4,7 +4,7 @@ const toastTypes = {
   success: { icon: "check-circle", color: "var(--green)" },
   error: { icon: "x-circle", color: "var(--danger)" },
   warning: { icon: "alert-triangle", color: "var(--amber)" },
-  info: { icon: "info", color: "var(--teal)" }
+  info: { icon: "info", color: "var(--brand)" }
 };
 
 function createToastElement(message, type = "info") {

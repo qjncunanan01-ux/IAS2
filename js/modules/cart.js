@@ -21,12 +21,23 @@ export function getCartLines() {
     .filter((line) => line.item && line.qty > 0);
 }
 
+let lastCartCount = null;
+
 export function renderCart() {
   if (!els.cartLines || !els.cartCount || !els.cartTotal) return;
   
   const lines = getCartLines();
-  els.cartCount.textContent = lines.reduce((total, line) => total + line.qty, 0);
+  const totalQty = lines.reduce((total, line) => total + line.qty, 0);
+  els.cartCount.textContent = totalQty;
   els.cartTotal.textContent = formatMoney(lines.reduce((total, line) => total + line.item.price * line.qty, 0));
+
+  // Bump the badge whenever the count changes (not on first paint).
+  if (lastCartCount !== null && totalQty !== lastCartCount) {
+    els.cartCount.classList.remove("bump");
+    void els.cartCount.offsetWidth; // restart the animation
+    els.cartCount.classList.add("bump");
+  }
+  lastCartCount = totalQty;
   
   els.cartLines.innerHTML = lines.length
     ? lines.map(({ item, qty }) => `
