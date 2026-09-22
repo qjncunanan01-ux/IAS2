@@ -2258,3 +2258,27 @@ button.alert-banner:hover {
     display: none;
   }
 }
+
+/* Lightbox zoom state */
+.lightbox-figure img {
+  cursor: zoom-in;
+  will-change: transform;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.lightbox-figure.is-zoomed img {
+  cursor: grab;
+}
+
+.lightbox-figure.is-zoomed:active img {
+  cursor: grabbing;
+}
+
+.lightbox-zoom-hint {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--chip-bg);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
