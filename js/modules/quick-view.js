@@ -43,7 +43,10 @@ function renderQuickView(item) {
       </div>
       <div class="quick-view-content">
         <figure class="quick-view-media">
-          <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
+          <button class="media-zoom-button" type="button" data-action="open-lightbox" data-id="${escapeAttribute(item.id)}" aria-label="View ${escapeAttribute(item.name)} full size">
+            <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
+            <span class="media-zoom-hint"><i data-lucide="zoom-in"></i> View full size</span>
+          </button>
         </figure>
         <div class="quick-view-info">
           <div class="quick-view-price">${formatMoney(item.price)}</div>

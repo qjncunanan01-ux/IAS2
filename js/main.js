@@ -9,6 +9,7 @@ import { initUserAdmin } from "./modules/user-admin.js";
 import { initOrderAdmin } from "./modules/order-admin.js";
 import { initModals } from "./modules/modals.js";
 import { initQuickView } from "./modules/quick-view.js";
+import { initLightbox } from "./modules/lightbox.js";
 import { initDataTools } from "./modules/data-tools.js";
 import { initKeyboardShortcuts, setShortcutsEnabled as enableShortcuts } from "./modules/keyboard.js";
 import { setView } from "./modules/ui.js";
@@ -54,6 +55,7 @@ function cacheDOM() {
     orderDetailModal: document.querySelector("#orderDetailModal"),
     quickViewModal: document.querySelector("#quickViewModal"),
     dataToolsModal: document.querySelector("#dataToolsModal"),
+    lightboxModal: document.querySelector("#lightboxModal"),
     toastArea: document.querySelector("#toastArea"),
     themeToggle: document.querySelector("#themeToggle")
   };
@@ -71,6 +73,7 @@ function initializeModules() {
   initOrderAdmin(elements);
   initModals(elements);
   initQuickView(elements);
+  initLightbox(elements);
   initDataTools(elements);
   initKeyboardShortcuts();
 }
