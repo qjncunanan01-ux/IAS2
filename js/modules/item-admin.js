@@ -31,7 +31,8 @@ export function saveItem(form) {
     stock: Number(data.get("stock")),
     image: String(data.get("image")).trim(),
     description: String(data.get("description")).trim(),
-    active: String(data.get("active")) === "true"
+    active: String(data.get("active")) === "true",
+    featured: data.get("featured") === "on"
   };
 
   if (formId) {
@@ -113,6 +114,10 @@ function renderItemForm(item = {}) {
             <option value="false" ${item.active === false ? "selected" : ""}>Inactive</option>
           </select>
         </div>
+        <label class="check-field" for="itemFeatured">
+          <input id="itemFeatured" name="featured" type="checkbox" ${item.featured ? "checked" : ""} />
+          <span>Featured product (shown in the shop hero banner)</span>
+        </label>
         <button class="primary-button wide" type="submit">Save Item</button>
       </form>
     </div>

@@ -36,6 +36,7 @@ const defaultItems = [
     category: "Audio",
     price: 2450,
     stock: 11,
+    featured: true,
     image: "assets/img/headphones.jpg",
     description: "Lightweight wireless listening with soft ear cushions.",
     active: true
@@ -144,7 +145,7 @@ const defaultItems = [
 
 // Bump when the default catalog changes: existing installs get new items and
 // refreshed photos merged in once (user deletions are respected afterwards).
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 const sortLabels = {
   featured: "Featured",
@@ -180,6 +181,7 @@ if (storedSeedVersion < SEED_VERSION) {
     if (existing) {
       existing.image = item.image;
       existing.description = item.description;
+      if (item.featured) existing.featured = true;
     } else {
       state.items.push(structuredClone(item));
     }

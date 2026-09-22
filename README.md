@@ -20,6 +20,7 @@ npx http-server -p 8080
 
 ### Customer Features
 - **Authentication**: Login/register with email/password
+- **Featured Hero Banner**: Admin-picked spotlight product shown above the shop grid
 - **Product Browsing**: Search, filter by category, sort (featured, price, stock)
 - **Shopping Cart**: Add/remove items, quantity controls, persistent across sessions
 - **Wishlist**: Save items for later with heart icons

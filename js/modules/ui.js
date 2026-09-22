@@ -23,7 +23,7 @@ import { openQuickView, closeQuickView } from "./quick-view.js";
 import { toggleWishlist, isInWishlist } from "./wishlist.js";
 import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js";
 import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js";
-import { renderProductCard } from "../components/render-helpers.js";
+import { renderProductCard, renderStockChip } from "../components/render-helpers.js";
 
 let els = {};
 
@@ -323,7 +323,10 @@ function renderShop() {
 
   const items = getFilteredItems();
   updateSearchClear();
+  const featuredItem = state.items.find((item) => item.featured && item.active && Number(item.stock) > 0);
+  const isDefaultListing = !state.search && state.category === "All" && state.sort === "featured";
   els.viewRoot.innerHTML = `
+    ${featuredItem && isDefaultListing ? renderHero(featuredItem) : ""}
     <div class="section-heading">
       <div>
         <p class="eyebrow">Store</p>
@@ -639,6 +642,36 @@ function renderCategoriesPanel() {
           }).join("")}
         </tbody>
       </table>
+    </section>
+  `;
+}
+
+function renderHero(item) {
+  return `
+    <section class="hero-banner" aria-label="Featured product">
+      <div class="hero-copy">
+        <p class="hero-eyebrow"><i data-lucide="sparkles"></i> Featured</p>
+        <h2 class="hero-title">${escapeHtml(item.name)}</h2>
+        <p class="hero-desc">${escapeHtml(item.description)}</p>
+        <div class="hero-meta">
+          <strong class="hero-price">${formatMoney(item.price)}</strong>
+          ${renderStockChip(item)}
+          ${renderCategoryChip(item.category)}
+        </div>
+        <div class="hero-actions">
+          <button class="primary-button" type="button" data-action="add-cart" data-id="${escapeAttribute(item.id)}">
+            <i data-lucide="shopping-cart"></i>
+            Add to Cart
+          </button>
+          <button class="secondary-button" type="button" data-action="quick-view" data-id="${escapeAttribute(item.id)}">
+            <i data-lucide="eye"></i>
+            Quick View
+          </button>
+        </div>
+      </div>
+      <figure class="hero-media">
+        <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
+      </figure>
     </section>
   `;
 }
