@@ -4,6 +4,15 @@ import { escapeAttribute, refreshIcons } from "../utils/helpers.js";
 let els = {};
 let currentIndex = 0;
 
+// Touch swipe tracking
+let swipeTracking = false;
+let swipeIntent = false;
+let swipeStartX = 0;
+let swipeStartY = 0;
+
+const SWIPE_COMMIT_PX = 48;
+const SWIPE_INTENT_PX = 14;
+
 export function initLightbox(elements) {
   els = elements;
   // Arrow keys flip photos while the lightbox is open.
@@ -12,6 +21,66 @@ export function initLightbox(elements) {
     if (event.key === "ArrowLeft") navLightbox(-1);
     if (event.key === "ArrowRight") navLightbox(1);
   });
+
+  // Touch gestures: drag-follow while swiping, commit past a threshold.
+  // Listeners live on the layer itself so they survive content re-renders.
+  const layer = els.lightboxModal;
+  if (!layer) return;
+  layer.addEventListener("touchstart", onTouchStart, { passive: true });
+  layer.addEventListener("touchmove", onTouchMove, { passive: true });
+  layer.addEventListener("touchend", onTouchEnd);
+  layer.addEventListener("touchcancel", onTouchEnd);
+}
+
+function onTouchStart(event) {
+  if (event.touches.length !== 1 || state.items.length < 2) return;
+  swipeTracking = true;
+  swipeIntent = false;
+  swipeStartX = event.touches[0].clientX;
+  swipeStartY = event.touches[0].clientY;
+}
+
+function onTouchMove(event) {
+  if (!swipeTracking || event.touches.length !== 1) return;
+  const dx = event.touches[0].clientX - swipeStartX;
+  const dy = event.touches[0].clientY - swipeStartY;
+
+  // Only claim the gesture once it is clearly horizontal.
+  if (!swipeIntent) {
+    if (Math.abs(dx) > SWIPE_INTENT_PX && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      swipeIntent = true;
+    } else {
+      return;
+    }
+  }
+
+  // Photo follows the finger with resistance while dragging.
+  const img = els.lightboxModal.querySelector(".lightbox-figure img");
+  if (img) {
+    img.style.transition = "none";
+    img.style.transform = `translateX(${dx * 0.35}px)`;
+  }
+}
+
+function onTouchEnd(event) {
+  if (!swipeTracking) return;
+  swipeTracking = false;
+
+  const touch = event.changedTouches?.[0];
+  const dx = touch ? touch.clientX - swipeStartX : 0;
+  const dy = touch ? touch.clientY - swipeStartY : 0;
+
+  // Release the photo: back to the stylesheet transition, clear the drag.
+  const img = els.lightboxModal.querySelector(".lightbox-figure img");
+  if (img) {
+    img.style.transition = "";
+    img.style.transform = "";
+  }
+
+  if (swipeIntent && Math.abs(dx) > SWIPE_COMMIT_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
+    navLightbox(dx < 0 ? 1 : -1);
+  }
+  swipeIntent = false;
 }
 
 export function openLightbox(itemId) {
