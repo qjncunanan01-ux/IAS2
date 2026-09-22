@@ -20,7 +20,7 @@ import {
 import { openCheckout, closeCheckout, placeCheckoutOrder } from "./checkout.js";
 import { closeEntity } from "./modals.js";
 import { openQuickView, closeQuickView } from "./quick-view.js";
-import { openLightbox, closeLightbox, navLightbox } from "./lightbox.js";
+import { openLightbox, closeLightbox, navLightbox, jumpLightbox } from "./lightbox.js";
 import { toggleWishlist, isInWishlist } from "./wishlist.js";
 import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js";
 import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js";
@@ -133,6 +133,7 @@ function handleClick(event) {
     "close-lightbox": closeLightbox,
     "lightbox-prev": () => navLightbox(-1),
     "lightbox-next": () => navLightbox(1),
+    "lightbox-jump": () => jumpLightbox(Number(actionTarget.dataset.index)),
     "add-wishlist": () => toggleWishlist(id),
     "remove-wishlist": () => toggleWishlist(id),
     "go-wishlist": () => setView("wishlist"),

@@ -97,7 +97,13 @@ export function openLightbox(itemId) {
 export function navLightbox(delta) {
   const total = state.items.length;
   if (total < 2 || !els.lightboxModal || els.lightboxModal.classList.contains("hidden")) return;
-  currentIndex = (currentIndex + delta + total) % total;
+  jumpLightbox((currentIndex + delta + total) % total);
+}
+
+export function jumpLightbox(index) {
+  const total = state.items.length;
+  if (index < 0 || index >= total || !els.lightboxModal || els.lightboxModal.classList.contains("hidden")) return;
+  currentIndex = index;
   updateLightboxContent();
 }
 
@@ -131,6 +137,15 @@ function renderLightbox() {
           <span class="lightbox-counter">${currentIndex + 1} / ${state.items.length}</span>
         </figcaption>
       </figure>
+      <div class="lightbox-thumbs" role="tablist" aria-label="Product photos">
+        ${state.items.map((candidate, index) => `
+          <button class="lightbox-thumb ${index === currentIndex ? "is-active" : ""}" type="button"
+            role="tab" aria-selected="${index === currentIndex}" aria-label="Go to ${escapeAttribute(candidate.name)}"
+            data-action="lightbox-jump" data-index="${index}">
+            <img src="${escapeAttribute(candidate.image || "assets/placeholder.svg")}" alt="" loading="lazy" />
+          </button>
+        `).join("")}
+      </div>
     </div>
   `;
 }
@@ -155,4 +170,16 @@ function updateLightboxContent() {
   }
   if (name) name.textContent = item.name;
   if (counter) counter.textContent = `${currentIndex + 1} / ${state.items.length}`;
+
+  // Move the active highlight and keep the strip scrolled to it.
+  els.lightboxModal.querySelectorAll(".lightbox-thumb").forEach((thumb) => {
+    const isActive = Number(thumb.dataset.index) === currentIndex;
+    thumb.classList.toggle("is-active", isActive);
+    thumb.setAttribute("aria-selected", String(isActive));
+  });
+  const strip = els.lightboxModal.querySelector(".lightbox-thumbs");
+  const activeThumb = strip?.querySelector(".lightbox-thumb.is-active");
+  if (strip && activeThumb) {
+    strip.scrollLeft = activeThumb.offsetLeft - (strip.clientWidth - activeThumb.clientWidth) / 2;
+  }
 }
