@@ -77,3 +77,36 @@ jobs:
             Download `ias2-deploy.zip`, upload it to your InfinityFree
             `htdocs` folder, and extract in place.
           make_latest: true
+
+  # Auto-deploy to InfinityFree. Enable once, after creating your account:
+  #   1. Settings > Secrets and variables > Actions > Secrets: add
+  #      FTP_HOST (e.g. ftpupload.net), FTP_USERNAME (e.g. epiz_12345678),
+  #      FTP_PASSWORD (from your InfinityFree Accounts page)
+  #   2. Same page, Variables tab: add FTP_DEPLOY = true
+  # Every push to main then uploads the site straight to htdocs.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: vars.FTP_DEPLOY == 'true'
+    steps:
+      - name: Download built zip
+        uses: actions/download-artifact@v4
+        with:
+          name: ias2-deploy
+
+      - name: Unpack for upload
+        run: |
+          mkdir site
+          cd site
+          unzip -q ../ias2-deploy.zip
+
+      - name: Upload to InfinityFree over FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftps
+          server-dir: /htdocs/
+          local-dir: site/
