@@ -109,13 +109,24 @@ npx http-server -p 8080
 
 The last admin account cannot be deleted or demoted, and the logged-in account cannot delete itself.
 
+## Deployment (InfinityFree)
+
+The deploy zip is **built automatically by GitHub Actions on every push** to `main`:
+
+- Workflow: [`.github/workflows/build-deploy-zip.yml`](.github/workflows/build-deploy-zip.yml)
+- Each run syntax-checks every JS module, verifies required files, and packages `index.html`, `styles.css`, `js/`, `assets/`, and `README.md` into `ias2-deploy.zip`.
+- Download it from the run's **Artifacts** section, or from the **latest** release:
+  `https://github.com/<owner>/IAS2/releases/latest`
+
+To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the File Manager (or FTP), extract it in place, and make sure `index.html` sits directly inside `htdocs`. The app is fully static — no PHP or database needed.
+
 ## Browser Support
 
 Modern browsers with ES module support (Chrome 61+, Firefox 60+, Safari 11+, Edge 79+).
 
 ## Security Note
 
-This is a **frontend demo only**. Passwords are stored in plaintext in localStorage. Payment references are not validated. Do not use for production without:
+This is a **frontend demo only**. All state lives in localStorage and every restriction (roles, admin access) is client-side only. Passwords are stored as salted SHA-256 hashes (Web Crypto), which is still demo-grade — anyone with dev tools can read or rewrite localStorage. Do not use for production without:
 - Server-side authentication (bcrypt/argon2)
 - HTTPS-only cookies or JWT
 - Payment gateway integration (Stripe, PayMongo, etc.)

@@ -1,0 +1,79 @@
+name: Build deploy zip
+
+# Rebuilds ias2-deploy.zip (ready to upload to InfinityFree htdocs) on every
+# push to main. The zip is attached to the run as an artifact and replaces the
+# asset on the rolling "latest" release, so
+# https://github.com/<owner>/IAS2/releases/latest always has the newest build.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check all JavaScript modules
+        run: |
+          fail=0
+          while IFS= read -r -d '' file; do
+            node --check "$file" || fail=1
+          done < <(find js -name '*.js' -print0)
+          exit $fail
+
+      - name: Verify required files exist
+        run: |
+          for f in index.html styles.css js/main.js assets/placeholder.svg; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing required file: $f"
+              exit 1
+            fi
+          done
+
+      - name: Build InfinityFree deploy zip
+        run: |
+          mkdir -p dist
+          cp index.html styles.css README.md dist/
+          cp -r js assets dist/
+          cd dist
+          zip -qr ../ias2-deploy.zip index.html styles.css js assets README.md
+          cd ..
+          rm -rf dist
+          echo "Zip contents:"
+          unzip -l ias2-deploy.zip
+
+      - name: Upload artifact (kept 90 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ias2-deploy
+          path: ias2-deploy.zip
+          retention-days: 90
+
+      - name: Refresh rolling "latest" release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest deploy build
+          files: ias2-deploy.zip
+          body: |
+            Auto-built from the latest push to `main`.
+            Download `ias2-deploy.zip`, upload it to your InfinityFree
+            `htdocs` folder, and extract in place.
+          make_latest: true
