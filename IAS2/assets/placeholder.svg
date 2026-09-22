@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" role="img" aria-labelledby="title desc">
-  <title id="title">Product placeholder</title>
-  <desc id="desc">Generic product illustration.</desc>
-  <rect width="720" height="540" rx="36" fill="#edf0ea"/>
-  <rect x="178" y="132" width="364" height="276" rx="28" fill="#ffffff"/>
-  <path d="M236 340l76-88 58 62 54-48 60 74H236z" fill="#117568" opacity=".86"/>
-  <circle cx="447" cy="208" r="38" fill="#f3b84f"/>
-  <rect x="212" y="432" width="296" height="24" rx="12" fill="#252827" opacity=".2"/>
-</svg>
