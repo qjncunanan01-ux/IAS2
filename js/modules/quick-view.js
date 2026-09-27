@@ -3,6 +3,7 @@ import { escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { closeEntity } from "./modals.js";
 import { addToCart } from "./cart.js";
+import { relatedItems } from "./stats.js";
 import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js";
 
 let els = {};
@@ -19,6 +20,16 @@ export function openQuickView(itemId) {
   els.quickViewModal.classList.remove("hidden");
   refreshIcons();
   focusFirstFocusable(els.quickViewModal);
+}
+
+// Re-render the open quick view after a wishlist toggle from inside it, so
+// the button label and the related rail's hearts stay in sync.
+export function refreshQuickView(itemId) {
+  if (!els.quickViewModal || els.quickViewModal.classList.contains("hidden")) return;
+  const item = state.items.find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  els.quickViewModal.innerHTML = renderQuickView(item);
+  refreshIcons();
 }
 
 export function closeQuickView() {
@@ -67,6 +78,29 @@ function renderQuickView(item) {
             </button>
           </div>
         </div>
+      </div>
+      ${renderRelatedItems(item)}
+    </div>
+  `;
+}
+
+function renderRelatedItems(item) {
+  const related = relatedItems(item.id, 3);
+  if (!related.length) return "";
+  return `
+    <div class="quick-view-related">
+      <h3>You might also like</h3>
+      <div class="related-rail">
+        ${related
+          .map(
+            (candidate) => `
+              <button class="related-card" type="button" data-action="quick-view" data-id="${escapeAttribute(candidate.id)}" aria-label="Quick view ${escapeAttribute(candidate.name)}">
+                <img src="${escapeAttribute(candidate.image || "assets/placeholder.svg")}" alt="" loading="lazy" />
+                <span class="related-name">${escapeHtml(candidate.name)}</span>
+                <strong class="related-price">${formatMoney(candidate.price)}</strong>
+              </button>`
+          )
+          .join("")}
       </div>
     </div>
   `;

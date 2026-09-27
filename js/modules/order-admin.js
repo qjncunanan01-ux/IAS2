@@ -252,16 +252,22 @@ function renderOrderDetail(order, user, currentUser, isAdminUser) {
         <div class="detail-section">
           <h3>Items</h3>
           <div class="order-detail-items">
-            ${order.items.map(item => `
+            ${order.items.map(item => {
+              // Order lines store a snapshot without images; fall back to the
+              // live product, then the shared placeholder.
+              const product = state.items.find((candidate) => candidate.id === item.itemId);
+              const image = product?.image || item.image || "assets/placeholder.svg";
+              return `
               <div class="order-detail-item">
-                <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
+                <img src="${escapeAttribute(image)}" alt="${escapeAttribute(item.name)}" />
                 <div class="item-info">
                   <h4>${escapeHtml(item.name)}</h4>
                   <p>${formatMoney(item.price)} x ${Number(item.qty)}</p>
                 </div>
                 <strong>${formatMoney(item.price * item.qty)}</strong>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>
         </div>
         

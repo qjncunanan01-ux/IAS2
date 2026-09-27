@@ -25,6 +25,8 @@ import { toggleWishlist, isInWishlist } from "./wishlist.js";
 import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js";
 import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js";
 import { renderProductCard, renderStockChip } from "../components/render-helpers.js";
+import { sortLabels } from "./state.js";
+import { salesByCategory, topSellingItems, restockSuggestions, lowStockItems } from "./stats.js";
 
 let els = {};
 
@@ -138,14 +140,15 @@ function handleClick(event) {
     "remove-wishlist": () => toggleWishlist(id),
     "go-wishlist": () => setView("wishlist"),
     "view-low-stock": () => {
+      // Jump to the shop pre-filtered to All, so every low-stock item is one
+      // glance away instead of just flashing rows in the admin table.
       state.search = "";
       state.category = "All";
+      state.sort = "stock";
       if (els.searchInput) els.searchInput.value = "";
-      state.view = "admin";
-      state.adminTab = "items";
+      if (els.sortFilter) els.sortFilter.value = "stock";
+      state.view = "shop";
       render();
-      // render() is synchronous, so the rows exist now; flash them.
-      document.querySelectorAll(".low-stock").forEach((row) => row.classList.add("highlight-flash"));
     },
     "new-category": () => createCategory(),
     "edit-category": () => renameCategory(id),
@@ -199,6 +202,10 @@ function handleSubmit(event) {
 function handleChange(event) {
   const actionTarget = event.target.closest("[data-action]");
   if (actionTarget?.dataset.action === "update-order-status") {
+    // The status select lives inside a .modal-layer, whose click would also
+    // bubble into the backdrop-dismiss handler; stop it so one change fires
+    // exactly one update (and one toast).
+    event.stopPropagation();
     updateOrderStatus(actionTarget.dataset.id, event.target.value);
     return;
   }
@@ -251,7 +258,13 @@ export function render() {
 function renderNavigation() {
   const currentUser = getCurrentUser();
   document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === state.view);
+    const isActive = button.dataset.view === state.view;
+    button.classList.toggle("is-active", isActive);
+    if (isActive) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
   });
 
   document.querySelectorAll(".is-admin").forEach((element) => {
@@ -312,15 +325,19 @@ function getFilteredItems() {
     .filter((item) => item.active)
     .filter((item) => state.category === "All" || item.category === state.category)
     .filter((item) => {
+      // Multi-word search: every word must appear somewhere in the haystack,
+      // in any order — "desk lamp" and "lamp desk" both match.
+      if (!query) return true;
       const haystack = `${item.name} ${item.category} ${item.description}`.toLowerCase();
-      return !query || haystack.includes(query);
+      return query.split(/\s+/).every((word) => haystack.includes(word));
     });
 
   return filtered.sort((a, b) => {
     if (state.sort === "priceLow") return Number(a.price) - Number(b.price);
     if (state.sort === "priceHigh") return Number(b.price) - Number(a.price);
     if (state.sort === "stock") return Number(b.stock) - Number(a.stock);
-    return a.name.localeCompare(b.name);
+    // "Featured": the featured product leads, then everything alphabetical.
+    return Boolean(b.featured) - Boolean(a.featured) || a.name.localeCompare(b.name);
   });
 }
 
@@ -337,7 +354,7 @@ function renderShop() {
       <div>
         <p class="eyebrow">Store</p>
         <h1>Products</h1>
-        <p>${items.length} item${items.length === 1 ? "" : "s"} shown by ${escapeHtml(state.sort)}.</p>
+        <p>${items.length} item${items.length === 1 ? "" : "s"} shown by ${escapeHtml(sortLabels[state.sort]?.toLowerCase() || state.sort)}.</p>
       </div>
       <button class="secondary-button" type="button" data-action="go-wishlist">
         <i data-lucide="heart"></i>
@@ -347,7 +364,15 @@ function renderShop() {
     ${
       items.length
         ? `<div class="product-grid">${items.map(renderProductCard).join("")}</div>`
-        : renderEmptyState("No items found", "Try a different search or category.", "")
+        : renderEmptyState(
+          state.search ? "No items found" : "Nothing in this category yet",
+          state.search
+            ? `No results for “${state.search}”. Check the spelling or try a different word.`
+            : "Try a different search or category.",
+          state.search
+            ? `<button class="secondary-button" type="button" data-action="clear-search"><i data-lucide="eraser"></i>Clear search</button>`
+            : ""
+        )
     }
   `;
   refreshIcons();
@@ -388,11 +413,13 @@ function renderOrders() {
   }
 
   const orders = isAdmin() ? state.orders : state.orders.filter((order) => order.userId === currentUser.id);
+  const totalOrders = orders.length;
   els.viewRoot.innerHTML = `
     <div class="section-heading">
       <div>
         <p class="eyebrow">Orders</p>
         <h1>${isAdmin() ? "All Orders" : "My Orders"}</h1>
+        <p>${totalOrders} order${totalOrders === 1 ? "" : "s"} in the system.</p>
       </div>
     </div>
     ${
@@ -419,7 +446,6 @@ function renderAdmin() {
     orders: state.orders.length,
     sales: state.orders.reduce((total, order) => total + Number(order.total || 0), 0)
   };
-
   els.viewRoot.innerHTML = `
     <div class="admin-shell">
       <div class="section-heading">
@@ -450,6 +476,7 @@ function renderAdmin() {
           <strong>${formatMoney(metrics.sales)}</strong>
         </div>
       </div>
+      ${renderAdminAnalytics()}
       <div class="admin-tabs" role="tablist" aria-label="Admin sections">
         ${renderAdminTab("items", "Items")}
         ${renderAdminTab("users", "Users")}
@@ -470,6 +497,53 @@ function renderAdminTab(tab, label) {
   `;
 }
 
+// Inline analytics: horizontal bar chart of revenue per category plus the
+// best-seller list. Pure div bars (no canvas/SVG) so they theme automatically.
+function renderAdminAnalytics() {
+  const sales = salesByCategory();
+  const bestSellers = topSellingItems(4);
+  if (!sales.length) return "";
+
+  const max = Math.max(...sales.map((row) => row.total), 1);
+  const bars = sales
+    .map(
+      (row, index) => `
+        <div class="chart-row">
+          <span class="chart-label">${escapeHtml(row.category)}</span>
+          <div class="chart-track">
+            <div class="chart-fill hue-${index % 8}" style="width: ${Math.max(4, Math.round((row.total / max) * 100))}%"></div>
+          </div>
+          <span class="chart-value">${formatMoney(row.total)}</span>
+        </div>`
+    )
+    .join("");
+
+  const bestSellerRows = bestSellers.length
+    ? bestSellers
+        .map(
+          (row) => `
+            <li>
+              <span>${escapeHtml(row.name)}</span>
+              <strong>${row.sold} sold</strong>
+            </li>`
+        )
+        .join("")
+    : `<li class="chart-empty">No sales recorded yet — place an order to see best-sellers.</li>`;
+
+  return `
+    <section class="admin-analytics">
+      <div class="analytics-card">
+        <h3><i data-lucide="bar-chart-3"></i> Sales by Category</h3>
+        <div class="chart">${bars}</div>
+      </div>
+      <div class="analytics-card">
+        <h3><i data-lucide="flame"></i> Best Sellers</h3>
+        <ul class="best-seller-list">${bestSellerRows}</ul>
+      </div>
+    </section>
+  `;
+}
+
 function renderAdminPanel() {
   if (state.adminTab === "users") return renderUsersPanel();
   if (state.adminTab === "orders") return renderOrdersPanel();
@@ -478,12 +552,28 @@ function renderAdminPanel() {
 }
 
 function renderItemsPanel() {
-  const lowStockItems = state.items.filter(item => item.active && Number(item.stock) <= 5);
-  const lowStockAlert = lowStockItems.length > 0 ? `
-    <button class="alert-banner warning" type="button" data-action="view-low-stock" aria-label="Show low-stock items in the table">
+  const lowStock = lowStockItems();
+  const lowStockAlert = lowStock.length > 0 ? `
+    <button class="alert-banner warning" type="button" data-action="view-low-stock" aria-label="Show low-stock items in the shop">
       <i data-lucide="alert-triangle"></i>
-      <span>${lowStockItems.length} item${lowStockItems.length === 1 ? "" : "s"} running low on stock — click to highlight</span>
+      <span>${lowStock.length} item${lowStock.length === 1 ? "" : "s"} running low on stock — click to view them all</span>
     </button>
+  ` : "";
+
+  // What to restock first: things that sell fast relative to what's left.
+  const restockRows = restockSuggestions(3);
+  const restockBlock = restockRows.length ? `
+    <div class="restock-box">
+      <h3><i data-lucide="package-search"></i> Restock soon</h3>
+      <ul>
+        ${restockRows.map(({ item, sold, stock }) => `
+          <li>
+            <span>${escapeHtml(item.name)}</span>
+            <em>${sold} sold · ${stock === 0 ? "out of stock" : `${stock} left`}</em>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
   ` : "";
 
   return `
@@ -496,6 +586,7 @@ function renderItemsPanel() {
         </button>
       </div>
       ${lowStockAlert}
+      ${restockBlock}
       <table class="data-table">
         <thead>
           <tr>
@@ -648,16 +739,17 @@ function renderCategoriesPanel() {
           }).join("")}
         </tbody>
       </table>
+      <p class="table-footnote">Categories come from your items — need one with no items yet? <button class="link-button" type="button" data-action="new-category">Create a category</button></p>
     </section>
   `;
 }
 
 function renderHero(item) {
   return `
-    <section class="hero-banner" aria-label="Featured product">
+    <section class="hero-banner" aria-labelledby="heroTitle">
       <div class="hero-copy">
         <p class="hero-eyebrow"><i data-lucide="sparkles"></i> Featured</p>
-        <h2 class="hero-title">${escapeHtml(item.name)}</h2>
+        <h2 class="hero-title" id="heroTitle">${escapeHtml(item.name)}</h2>
         <p class="hero-desc">${escapeHtml(item.description)}</p>
         <div class="hero-meta">
           <strong class="hero-price">${formatMoney(item.price)}</strong>
@@ -678,6 +770,5 @@ function renderHero(item) {
       <figure class="hero-media">
         <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
       </figure>
-    </section>
   `;
 }

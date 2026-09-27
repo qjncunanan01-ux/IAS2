@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { save } from "../utils/storage.js";
 import { showToast, showSuccess } from "../components/toast.js";
 import { render } from "./ui.js";
+import { refreshQuickView } from "./quick-view.js";
 
 export function getWishlistLines() {
   return state.wishlist
@@ -28,4 +29,5 @@ export function toggleWishlist(itemId) {
     showSuccess(`${item.name} added to wishlist.`);
   }
   render();
+  refreshQuickView(itemId);
 }

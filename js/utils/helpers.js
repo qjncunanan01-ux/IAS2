@@ -25,7 +25,8 @@ export function formatDate(value) {
 }
 
 export function createId(prefix) {
-  const random = window.crypto?.randomUUID ? window.crypto.randomUUID().slice(0, 8) : Math.random().toString(16).slice(2, 10);
+  // globalThis (not window) so the helper also works in workers and tests.
+  const random = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID().slice(0, 8) : Math.random().toString(16).slice(2, 10);
   return `${prefix}_${random}`;
 }
 

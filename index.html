@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IAS2 Commerce</title>
     <link rel="stylesheet" href="styles.css" />
-    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="icon" href="assets/placeholder.svg" type="image/svg+xml" />
+    <meta name="description" content="IAS2 Commerce — a demo store with a customer shop, cart, wishlist, checkout, and a full admin dashboard." />
+    <meta name="theme-color" content="#14b8a6" />
+    <script defer src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" crossorigin="anonymous" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV"></script>
+    <script type="module" src="js/modules/lightbox.js"></script>
     <script type="module" src="js/main.js"></script>
   </head>
   <body>
+    <a class="skip-link" href="#viewRoot">Skip to products</a>
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#" data-action="go-shop" aria-label="IAS2 Commerce home">
@@ -47,11 +52,10 @@
           <button class="nav-button icon-button" type="button" data-action="toggle-theme" aria-label="Toggle dark mode" id="themeToggle">
             <i data-lucide="sun"></i>
           </button>
-          <span class="user-badge hidden" id="userBadge"></span>
-          <button class="primary-button" type="button" id="authButton" data-action="open-auth" data-mode="login">
-            Login
-          </button>
-        </nav>
+          <span class="user-badge hidden" id="userBadge"></span>        <button class="primary-button" type="button" id="authButton" data-action="open-auth" data-mode="login">
+          Login
+        </button>
+      </nav>
       </header>
 
       <main class="content-shell">

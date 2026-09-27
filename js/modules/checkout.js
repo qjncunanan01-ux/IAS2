@@ -29,6 +29,21 @@ export function openCheckout() {
     return;
   }
 
+  // Block deactivated items at checkout: they may have been switched off
+  // after being carted, and an admin order for them would be invalid.
+  const blockedLine = lines.find((line) => !line.item.active);
+  if (blockedLine) {
+    showError(`${blockedLine.item.name} is no longer available. Remove it to continue.`);
+    renderCart();
+    return;
+  }
+
+  const orderTotal = lines.reduce((total, line) => total + line.item.price * line.qty, 0);
+  if (orderTotal < 100) {
+    showError("Orders start at PHP 100 — add a little more to check out.");
+    return;
+  }
+
   const nameInput = document.querySelector("#checkoutName");
   if (nameInput) nameInput.value = currentUser.name;
 
@@ -51,7 +66,7 @@ export function placeCheckoutOrder(form) {
   const lines = getCartLines();
   if (!currentUser || !lines.length) return;
 
-  const unavailableLine = lines.find(({ item, qty }) => qty > Number(item.stock));
+  const unavailableLine = lines.find(({ item, qty }) => qty > Number(item.stock) || !item.active);
   if (unavailableLine) {
     showError(`${unavailableLine.item.name} has less stock now.`);
     renderCart();
