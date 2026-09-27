@@ -146,7 +146,7 @@ function closeAllOverlays() {
 
 function showShortcutsHelp() {
   const help = `
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle" style="max-width: 520px;">
+    <div class="modal-panel panel-narrow" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
       <div class="modal-header">
         <div>
           <p class="eyebrow">Help</p>

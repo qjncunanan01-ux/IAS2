@@ -42,7 +42,7 @@ function renderQuickView(item) {
   const inWishlist = state.wishlist?.includes(item.id);
   
   return `
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="quickViewTitle" style="max-width: 680px;">
+    <div class="modal-panel panel-mid" role="dialog" aria-modal="true" aria-labelledby="quickViewTitle">
       <div class="modal-header">
         <div>
           <p class="eyebrow">${escapeHtml(item.category)}</p>
