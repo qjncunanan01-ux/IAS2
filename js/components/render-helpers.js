@@ -1,4 +1,4 @@
-import { escapeHtml, escapeAttribute, formatMoney, formatDate, statusClass, refreshIcons } from "../utils/helpers.js";
+import { escapeHtml, escapeAttribute, formatMoney, formatDate, statusClass, refreshIcons } from "../utils/helpers.js?v=7bbd16f9";
 import { state } from "../modules/state.js";
 
 // Stable hue per category name: same name -> same color, everywhere.

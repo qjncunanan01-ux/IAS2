@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Modular vanilla-JS e-commerce demo with customer and admin flows",
   "scripts": {
-    "test": "node --test tests/stats.test.js tests/password.test.js tests/helpers.test.js tests/security.test.js tests/import-session.test.js"
+    "test": "node --test tests/stats.test.js tests/password.test.js tests/helpers.test.js tests/security.test.js tests/import-session.test.js tests/fingerprint.test.js",
+    "fingerprint": "node tools/fingerprint.mjs --apply",
+    "fingerprint:check": "node tools/fingerprint.mjs --check"
   }
 }

@@ -1,10 +1,10 @@
 import { state } from "./state.js";
-import { openAuth } from "./auth.js";
-import { openCart } from "./cart.js";
-import { toggleTheme } from "./theme.js";
-import { setView } from "./ui.js";
-import { openDataTools } from "./data-tools.js";
-import { getCurrentUser, isAdmin } from "./auth.js";
+import { openAuth } from "./auth.js?v=aec43a94";
+import { openCart } from "./cart.js?v=b2fca542";
+import { toggleTheme } from "./theme.js?v=2364f364";
+import { setView } from "./ui.js?v=a2fcb8e6";
+import { openDataTools } from "./data-tools.js?v=b037983e";
+import { getCurrentUser, isAdmin } from "./auth.js?v=aec43a94";
 
 let shortcutsEnabled = true;
 let lastKey = "";

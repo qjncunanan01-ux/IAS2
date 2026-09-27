@@ -1,4 +1,4 @@
-import { refreshIcons, escapeHtml } from "../utils/helpers.js";
+import { refreshIcons, escapeHtml } from "../utils/helpers.js?v=7bbd16f9";
 
 const toastTypes = {
   success: { icon: "check-circle", color: "var(--green)" },

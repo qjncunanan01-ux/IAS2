@@ -28,16 +28,20 @@ Options -Indexes
   Header always set Cross-Origin-Opener-Policy "same-origin"
   Header always set Cross-Origin-Resource-Policy "same-origin"
 
-  # Cache policy: HTML stays fresh so new deploys appear immediately,
-  # assets cache for a while since they only change on rebuild.
+  # Cache policy: HTML stays fresh so new deploys appear immediately.
+  # JS/CSS are content-fingerprinted at build time (?v=<hash> on every
+  # reference, see tools/fingerprint.mjs), so their URLs change whenever
+  # content changes — they can be cached as effectively immutable.
+  # Images and SVGs are referenced by runtime-constructed URLs that the
+  # build cannot fingerprint, so they keep a modest 1-hour lifetime.
   <FilesMatch "\.html$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
-  <FilesMatch "\.(css|js|svg)$">
-    Header set Cache-Control "public, max-age=3600"
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "\.(jpg|jpeg|png|webp|ico)$">
-    Header set Cache-Control "public, max-age=604800"
+  <FilesMatch "\.(svg|jpg|jpeg|png|webp|ico)$">
+    Header set Cache-Control "public, max-age=3600"
   </FilesMatch>
 
   # Never serve the export backup with forgiving content types

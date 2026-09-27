@@ -40,6 +40,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Verify asset fingerprints are current
+        run: node tools/fingerprint.mjs --check
+
       - name: Verify required files exist
         run: |
           for f in index.html styles.css js/main.js assets/placeholder.svg assets/vendor/lucide.min.js 404.html .htaccess; do

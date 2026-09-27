@@ -131,15 +131,24 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (58 tests: analytics logic, password hashing,
+Run the dependency-free unit tests (68 tests: analytics logic, password hashing,
 XSS escaping, input validation, the lockout state machine, import sanitization,
-session expiry):
+session expiry, asset fingerprinting):
 
 ```bash
 npm test          # or: node --test "tests/*.test.js"
 ```
 
 The same suite runs in CI on every push, before the deploy zip is built — a failing test blocks the release.
+
+### Asset cache-busting
+
+JS/CSS references are fingerprinted at build time (`styles.css?v=3074a736`),
+so browsers can never pair a new deploy with stale cached modules. After
+touching any asset, run `npm run fingerprint` (or `node tools/fingerprint.mjs
+--apply`) to refresh every reference — CI also gates deploys on
+`npm run fingerprint:check` passing. `js/modules/state.js` is deliberately
+kept bare (ESM module identity requires it) and is served no-cache.
 
 ## Browser Support
 
@@ -205,7 +214,7 @@ totals are always recomputed from the validated lines so tampered envelopes
 cannot inflate revenue.
 
 All of this logic is pure and covered by `tests/security.test.js` and
-`tests/import-session.test.js` (58 tests total). For hands-on verification,
+`tests/import-session.test.js` (68 tests total). For hands-on verification,
 **[SECURITY-TESTING.md](SECURITY-TESTING.md)** provides a 23-point checklist
 with concrete attack payloads (stored XSS, CSP bypass, brute force, lockout,
 privilege escalation, malicious imports, session attacks) and expected

@@ -1,12 +1,12 @@
 import { state } from "./state.js";
-import { save } from "../utils/storage.js";
-import { escapeHtml, escapeAttribute } from "../utils/helpers.js";
-import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
-import { showToast, showError, showSuccess } from "../components/toast.js";
-import { closeEntity } from "./modals.js";
-import { validateName } from "../utils/security.js";
-import { isAdmin } from "./auth.js";
-import { render } from "./ui.js";
+import { save } from "../utils/storage.js?v=ff51bd7c";
+import { escapeHtml, escapeAttribute } from "../utils/helpers.js?v=7bbd16f9";
+import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
+import { showToast, showError, showSuccess } from "../components/toast.js?v=083997a1";
+import { closeEntity } from "./modals.js?v=266d3e8d";
+import { validateName } from "../utils/security.js?v=fbf2cc5d";
+import { isAdmin } from "./auth.js?v=aec43a94";
+import { render } from "./ui.js?v=a2fcb8e6";
 
 // Action-level guard shared by create/rename/delete.
 function requireAdmin() {

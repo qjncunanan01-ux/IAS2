@@ -1,10 +1,10 @@
 import { state } from "./state.js";
-import { escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js";
-import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
-import { closeEntity } from "./modals.js";
-import { addToCart } from "./cart.js";
-import { relatedItems } from "./stats.js";
-import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js";
+import { escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js?v=7bbd16f9";
+import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
+import { closeEntity } from "./modals.js?v=266d3e8d";
+import { addToCart } from "./cart.js?v=b2fca542";
+import { relatedItems } from "./stats.js?v=90d87ad1";
+import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js?v=ec7654a4";
 
 let els = {};
 

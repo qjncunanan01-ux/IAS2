@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { escapeAttribute, refreshIcons } from "../utils/helpers.js";
+import { escapeAttribute, refreshIcons } from "../utils/helpers.js?v=7bbd16f9";
 
 let els = {};
 let currentIndex = 0;

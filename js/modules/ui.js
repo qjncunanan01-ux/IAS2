@@ -1,14 +1,14 @@
 import { state } from "./state.js";
-import { escapeHtml, escapeAttribute, formatMoney, formatDate } from "../utils/helpers.js";
-import { refreshIcons, focusFirstFocusable, debounce } from "../utils/helpers.js";
-import { showToast, showError, showSuccess, showWarning } from "../components/toast.js";
-import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js";
-import { getCurrentUser, isAdmin, ensureCurrentUserExists, touchSession } from "./auth.js";
-import { openAuth, closeAuth, login, register, logout } from "./auth.js";
-import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js";
-import { applyTheme, toggleTheme } from "./theme.js";
-import { openItemForm, saveItem, deleteItem } from "./item-admin.js";
-import { openUserForm, saveUser, deleteUser } from "./user-admin.js";
+import { escapeHtml, escapeAttribute, formatMoney, formatDate } from "../utils/helpers.js?v=7bbd16f9";
+import { refreshIcons, focusFirstFocusable, debounce } from "../utils/helpers.js?v=7bbd16f9";
+import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=083997a1";
+import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js?v=ec7654a4";
+import { getCurrentUser, isAdmin, ensureCurrentUserExists, touchSession } from "./auth.js?v=aec43a94";
+import { openAuth, closeAuth, login, register, logout } from "./auth.js?v=aec43a94";
+import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js?v=b2fca542";
+import { applyTheme, toggleTheme } from "./theme.js?v=2364f364";
+import { openItemForm, saveItem, deleteItem } from "./item-admin.js?v=8c4a97f2";
+import { openUserForm, saveUser, deleteUser } from "./user-admin.js?v=c2d262b4";
 import {
   openOrderForm,
   saveOrder,
@@ -16,17 +16,17 @@ import {
   openOrderDetail,
   closeOrderDetail,
   updateOrderStatus
-} from "./order-admin.js";
-import { openCheckout, closeCheckout, placeCheckoutOrder } from "./checkout.js";
-import { closeEntity } from "./modals.js";
-import { openQuickView, closeQuickView } from "./quick-view.js";
-import { openLightbox, closeLightbox, navLightbox, jumpLightbox } from "./lightbox.js";
-import { toggleWishlist, isInWishlist } from "./wishlist.js";
-import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js";
-import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js";
-import { renderProductCard, renderStockChip } from "../components/render-helpers.js";
+} from "./order-admin.js?v=4d38044b";
+import { openCheckout, closeCheckout, placeCheckoutOrder } from "./checkout.js?v=08d34311";
+import { closeEntity } from "./modals.js?v=266d3e8d";
+import { openQuickView, closeQuickView } from "./quick-view.js?v=5f184dd6";
+import { openLightbox, closeLightbox, navLightbox, jumpLightbox } from "./lightbox.js?v=990c66ab";
+import { toggleWishlist, isInWishlist } from "./wishlist.js?v=1de54067";
+import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js?v=b037983e";
+import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js?v=3f04d531";
+import { renderProductCard, renderStockChip } from "../components/render-helpers.js?v=ec7654a4";
 import { sortLabels } from "./state.js";
-import { salesByCategory, topSellingItems, restockSuggestions, lowStockItems } from "./stats.js";
+import { salesByCategory, topSellingItems, restockSuggestions, lowStockItems } from "./stats.js?v=90d87ad1";
 
 let els = {};
 

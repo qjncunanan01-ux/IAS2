@@ -1,4 +1,4 @@
-import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
+import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
 
 let els = {};
 

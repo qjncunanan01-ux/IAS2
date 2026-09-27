@@ -9,7 +9,7 @@
 // warning banner. Imports nothing from other app modules, so auth.js can
 // safely use resetSessionActivity without an import cycle.
 
-import { sessionExpired, shouldWarnSession, SESSION_TIMEOUT_MS, LAST_ACTIVITY_KEY } from "../utils/security.js";
+import { sessionExpired, shouldWarnSession, SESSION_TIMEOUT_MS, LAST_ACTIVITY_KEY } from "../utils/security.js?v=fbf2cc5d";
 
 const CHECK_INTERVAL_MS = 10_000;
 const WRITE_THROTTLE_MS = 30_000;

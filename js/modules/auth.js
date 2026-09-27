@@ -1,13 +1,13 @@
 import { state } from "../modules/state.js";
-import { save } from "../utils/storage.js";
-import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
-import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
-import { hashPassword, verifyPassword } from "../utils/password.js";
-import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, lockoutRemainingMs, formatCountdown, sessionExpired, LAST_ACTIVITY_KEY } from "../utils/security.js";
-import { resetSessionActivity } from "./session.js";
-import { rearmSession } from "./session.js";
-import { showToast, showError, showSuccess, showInfo } from "../components/toast.js";
-import { render } from "./ui.js";
+import { save } from "../utils/storage.js?v=ff51bd7c";
+import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js?v=7bbd16f9";
+import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
+import { hashPassword, verifyPassword } from "../utils/password.js?v=b7f20d0b";
+import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, lockoutRemainingMs, formatCountdown, sessionExpired, LAST_ACTIVITY_KEY } from "../utils/security.js?v=fbf2cc5d";
+import { resetSessionActivity } from "./session.js?v=f0f02091";
+import { rearmSession } from "./session.js?v=f0f02091";
+import { showToast, showError, showSuccess, showInfo } from "../components/toast.js?v=083997a1";
+import { render } from "./ui.js?v=a2fcb8e6";
 
 /* ---------- login rate limiting (persisted per email) ---------- */
 
