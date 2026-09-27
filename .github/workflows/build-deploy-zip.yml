@@ -37,6 +37,9 @@ jobs:
           done < <(find js -name '*.js' -print0)
           exit $fail
 
+      - name: Run unit tests
+        run: node --test "tests/*.test.js"
+
       - name: Verify required files exist
         run: |
           for f in index.html styles.css js/main.js assets/placeholder.svg 404.html .htaccess; do

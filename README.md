@@ -30,13 +30,14 @@ npx http-server -p 8080
 - **Dark Mode**: Toggle with persistence, respects system preference
 
 ### Admin Features
-- **Dashboard**: Metrics (users, items, orders, sales)
+- **Dashboard**: Metrics (users, items, orders, sales) plus an inline **sales-by-category chart** and **best-sellers** list (appears once there is order history)
+- **Restock Suggestions**: Items ranked by how fast they sell relative to remaining stock
 - **Item Management**: Full CRUD with image, category, price, stock, active status
 - **User Management**: Create/edit/delete users, role assignment (user/admin)
-- **Order Management**: View all orders, update status, create manual orders
-- **Category Management**: View categories with item counts and stock totals
-- **Low Stock Alerts**: Visual warnings for items with ≤5 stock
-- **Data Tools**: Export/import full database as JSON, clear all data
+- **Order Management**: View all orders, update status, create manual orders — order details show product photos
+- **Category Management**: View categories with item counts and stock totals, create empty categories
+- **Low Stock Alerts**: Visual warnings for items with ≤5 stock; the alert jumps to a stock-sorted shop listing
+- **Data Tools**: Export/import full database as JSON (richer import stats), clear all data
 
 ### UX & Accessibility
 - **Keyboard Shortcuts**: Press `Ctrl+/` for help
@@ -47,10 +48,13 @@ npx http-server -p 8080
   - `L/R` - Login/Register
   - `T` - Toggle theme
   - `D` - Data tools (admin)
-  - `Esc` - Close modals
+  - `Esc` - Close modals (un-zooms the lightbox first)
   - `Ctrl+K` - Focus search
+- **Skip Link**: `Tab` from page load jumps straight to the product grid
 - **Focus Management**: Modals trap focus, restore on close
 - **ARIA Labels**: Semantic HTML with proper roles and labels
+- **Search**: Multi-word matching across name, category, and description ("desk lamp" or "lamp desk" both work), with a helpful empty state and one-click clear
+- **Related Products**: Quick view suggests items from the same category
 - **Responsive Design**: Mobile-first, works down to 320px
 - **Toast Notifications**: Typed toasts (success, error, warning, info) with animations
 
@@ -66,6 +70,7 @@ npx http-server -p 8080
 │   │   ├── auth.js           # Authentication (async, hashed passwords)
 │   │   ├── cart.js           # Cart operations
 │   │   ├── checkout.js       # Checkout flow
+│   │   ├── stats.js          # Pure analytics helpers (sales, restock, related)
 │   │   ├── theme.js          # Dark/light mode + system preference
 │   │   ├── ui.js             # Rendering, navigation, delegated actions
 │   │   ├── item-admin.js
@@ -74,6 +79,7 @@ npx http-server -p 8080
 │   │   ├── category-tools.js # Category create/rename/delete
 │   │   ├── wishlist.js       # Wishlist logic (view rendered in ui.js)
 │   │   ├── quick-view.js
+│   │   ├── lightbox.js       # Full-size gallery: swipe, thumbs, zoom
 │   │   ├── data-tools.js     # Export/import/clear with validation
 │   │   ├── keyboard.js       # Shortcuts + help overlay
 │   │   └── modals.js
@@ -84,7 +90,8 @@ npx http-server -p 8080
 │       ├── storage.js    # localStorage abstraction (quota/corruption safe)
 │       ├── password.js   # SHA-256 password hashing
 │       └── helpers.js    # Formatting, escaping, debounce, etc.
-└── assets/               # SVG product images
+├── tests/                # Unit tests (node --test, no dependencies)
+└── assets/               # Product photos
 ```
 
 ## Architecture Notes
@@ -120,6 +127,16 @@ The deploy zip is **built automatically by GitHub Actions on every push** to `ma
   `https://github.com/<owner>/IAS2/releases/latest`
 
 To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the File Manager (or FTP), extract it in place, and make sure `index.html` sits directly inside `htdocs`. The app is fully static — no PHP or database needed.
+
+## Development
+
+Run the dependency-free unit tests (analytics logic, password hashing, XSS escaping):
+
+```bash
+node --test "tests/*.test.js"
+```
+
+The same suite runs in CI on every push, before the deploy zip is built — a failing test blocks the release.
 
 ## Browser Support
 
