@@ -67,7 +67,7 @@ npx http-server -p 8080
 │   ├── main.js           # Application entry point
 │   ├── modules/          # Feature modules
 │   │   ├── state.js          # Shared state & defaults
-│   │   ├── auth.js           # Authentication (async, hashed passwords)
+│   │   ├── auth.js           # Authentication (async, hashed passwords, lockout)
 │   │   ├── cart.js           # Cart operations
 │   │   ├── checkout.js       # Checkout flow
 │   │   ├── stats.js          # Pure analytics helpers (sales, restock, related)
@@ -89,6 +89,7 @@ npx http-server -p 8080
 │   └── utils/            # Utilities
 │       ├── storage.js    # localStorage abstraction (quota/corruption safe)
 │       ├── password.js   # SHA-256 password hashing
+│       ├── security.js   # Sanitizers, validators, image-path guard, lockout
 │       └── helpers.js    # Formatting, escaping, debounce, etc.
 ├── tests/                # Unit tests (node --test, no dependencies)
 └── assets/               # Product photos
@@ -130,10 +131,11 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (analytics logic, password hashing, XSS escaping):
+Run the dependency-free unit tests (45 tests: analytics logic, password hashing,
+XSS escaping, input validation, the lockout state machine):
 
 ```bash
-node --test "tests/*.test.js"
+npm test          # or: node --test "tests/*.test.js"
 ```
 
 The same suite runs in CI on every push, before the deploy zip is built — a failing test blocks the release.
@@ -142,11 +144,46 @@ The same suite runs in CI on every push, before the deploy zip is built — a fa
 
 Modern browsers with ES module support (Chrome 61+, Firefox 60+, Safari 11+, Edge 79+).
 
-## Security Note
+## Security Model
 
-This is a **frontend demo only**. All state lives in localStorage and every restriction (roles, admin access) is client-side only. Passwords are stored as salted SHA-256 hashes (Web Crypto), which is still demo-grade — anyone with dev tools can read or rewrite localStorage. Do not use for production without:
-- Server-side authentication (bcrypt/argon2)
-- HTTPS-only cookies or JWT
-- Payment gateway integration (Stripe, PayMongo, etc.)
-- CSRF/XSS protection
-- Input validation/sanitization on backend
+This is a **frontend-only demo** — all state lives in localStorage, and every
+restriction is enforced client-side. A determined user with dev tools can read
+or rewrite their own localStorage, and there is no real server authority.
+Within that scope, the app is hardened aggressively:
+
+**Content Security Policy (strict)** — both a `<meta>` policy and Apache
+headers: `script-src 'self'`, `style-src 'self'`, `object-src 'none'`,
+`base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`. Zero inline
+scripts, zero inline `style=""` attributes, zero third-party code — the icon
+set is vendored into `assets/vendor/`. Any injected `<script>` or `onerror`
+handler simply does not execute.
+
+**Security headers** — `X-Content-Type-Options: nosniff`, `X-Frame-Options`,
+`Referrer-Policy`, a restrictive `Permissions-Policy` (camera, mic, geolocation,
+payment, usb all disabled), `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy`,
+HTTPS redirect, and denied access to source maps and docs.
+
+**XSS defenses** — every dynamic value is HTML/attribute-escaped, including
+toast messages (an unescaped one was a real stored-XSS sink — fixed). Item
+image paths are validated server-grade: relative only, no URLs, no `..`
+traversal, image extensions only — so admin-stored paths can never become
+script vectors or load remote trackers.
+
+**Input validation** — every persisted field (names, emails, prices, stock,
+quantities, addresses, categories) passes sanitization (control-character
+stripping, length caps) and range validation before storage. The password
+policy (8+ chars, mixed case, digits) is enforced at credential creation.
+
+**Brute-force resistance** — after 5 failed logins an account key locks with
+escalating delays (30s → 15min, persisted across reloads); while locked even
+the correct password is rejected. Error messages are deliberately generic
+(`"Email or password did not match."`) so attackers cannot enumerate which
+emails hold accounts, and both success/failure paths do equivalent hashing
+work to blunt timing analysis.
+
+All of this logic is pure and covered by `tests/security.test.js`.
+
+Still true regardless: **do not use for real commerce without a backend** —
+server-side auth (bcrypt/argon2), server-enforced authorization, real payment
+processing, and server-side validation. Client-side "security" is UX, not a
+trust boundary.

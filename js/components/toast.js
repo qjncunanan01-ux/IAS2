@@ -1,4 +1,4 @@
-import { refreshIcons } from "../utils/helpers.js";
+import { refreshIcons, escapeHtml } from "../utils/helpers.js";
 
 const toastTypes = {
   success: { icon: "check-circle", color: "var(--green)" },
@@ -9,12 +9,11 @@ const toastTypes = {
 
 function createToastElement(message, type = "info") {
   const toast = document.createElement("div");
-  toast.className = "toast";
-  const { icon, color } = toastTypes[type] || toastTypes.info;
-  toast.style.borderLeftColor = color;
+  toast.className = `toast toast-${type}`;
+  const { icon } = toastTypes[type] || toastTypes.info;
   toast.innerHTML = `
-    <i data-lucide="${icon}" style="width: 18px; height: 18px; margin-right: 8px; flex-shrink: 0;"></i>
-    <span>${message}</span>
+    <i data-lucide="${icon}" class="toast-icon"></i>
+    <span>${escapeHtml(message)}</span>
   `;
   return toast;
 }

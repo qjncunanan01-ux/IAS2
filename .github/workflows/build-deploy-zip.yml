@@ -42,7 +42,7 @@ jobs:
 
       - name: Verify required files exist
         run: |
-          for f in index.html styles.css js/main.js assets/placeholder.svg 404.html .htaccess; do
+          for f in index.html styles.css js/main.js assets/placeholder.svg assets/vendor/lucide.min.js 404.html .htaccess; do
             if [ ! -f "$f" ]; then
               echo "::error::Missing required file: $f"
               exit 1

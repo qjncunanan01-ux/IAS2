@@ -4,6 +4,7 @@ import { escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
+import { validateName } from "../utils/security.js";
 import { render } from "./ui.js";
 
 function modalLayer() {
@@ -21,12 +22,12 @@ export function createCategory(form = null) {
   }
 
   const data = new FormData(form);
-  const name = String(data.get("name")).trim();
-
-  if (!name) {
-    showError("Category name is required.");
+  const nameCheck = validateName(data.get("name"), { min: 2, max: 40 });
+  if (!nameCheck.ok) {
+    showError(nameCheck.error);
     return;
   }
+  const name = nameCheck.value;
 
   if (state.items.some((item) => item.category.toLowerCase() === name.toLowerCase())) {
     showError("That category already exists.");
@@ -66,10 +67,11 @@ export function renameCategory(categoryName) {
 export function submitRenameCategory(form) {
   const data = new FormData(form);
   const original = String(form.dataset.original || "");
-  const next = String(data.get("name")).trim();
+  const nameCheck = validateName(data.get("name"), { min: 2, max: 40 });
+  const next = nameCheck.ok ? nameCheck.value : "";
 
   if (!next) {
-    showError("Category name is required.");
+    showError(nameCheck.error);
     return;
   }
 

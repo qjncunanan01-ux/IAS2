@@ -4,11 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IAS2 Commerce</title>
+    <!-- Locks down everything to same-origin: no inline script, no inline
+         styles, no remote code. The mirror-image HTTP headers live in .htaccess. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="assets/placeholder.svg" type="image/svg+xml" />
     <meta name="description" content="IAS2 Commerce — a demo store with a customer shop, cart, wishlist, checkout, and a full admin dashboard." />
     <meta name="theme-color" content="#14b8a6" />
-    <script defer src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" crossorigin="anonymous" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV"></script>
+    <script defer src="assets/vendor/lucide.min.js"></script>
     <script type="module" src="js/modules/lightbox.js"></script>
     <script type="module" src="js/main.js"></script>
   </head>

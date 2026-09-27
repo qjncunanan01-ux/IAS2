@@ -4,9 +4,32 @@
 DirectoryIndex index.html
 Options -Indexes
 
-# Cache policy: HTML stays fresh so new deploys appear immediately,
-# assets cache for a while since they only change on rebuild.
+# ============================================================
+# Content-Security-Policy (mirror of the <meta> tag in index.html):
+# everything same-origin, no inline script, no inline styles,
+# no third-party code, no frames, no form hijacking.
+# ============================================================
 <IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+
+  # Never let the browser guess content types (blocks MIME confusion attacks)
+  Header always set X-Content-Type-Options "nosniff"
+
+  # Anti-clickjacking: only our own origin may frame us
+  Header always set X-Frame-Options "SAMEORIGIN"
+
+  # Don't leak full URLs to other origins via Referer
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Disable browser features the store doesn't use (and attackers could abuse)
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+
+  # Isolate the browsing context (Spectre-class mitigations)
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+
+  # Cache policy: HTML stays fresh so new deploys appear immediately,
+  # assets cache for a while since they only change on rebuild.
   <FilesMatch "\.html$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
@@ -17,16 +40,23 @@ Options -Indexes
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
 
-  # Basic security headers
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  # Never serve the export backup with forgiving content types
+  <FilesMatch "\.json$">
+    Header set X-Content-Type-Options "nosniff"
+    Header set Content-Disposition "attachment"
+  </FilesMatch>
+
+  # Source maps and internal docs should never ship to the web root
+  <FilesMatch "\.(map|md|log|bak)$">
+    Require all denied
+  </FilesMatch>
 </IfModule>
 
 # Friendly 404 page instead of the hosting default
 ErrorDocument 404 /404.html
 
-# Force HTTPS if the host is not local
+# Force HTTPS if the host is not local (InfinityFree injects its own
+# HSTS header when the free SSL is active, so we don't add a duplicate)
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP:X-Forwarded-Proto} !https

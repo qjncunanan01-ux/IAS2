@@ -1,0 +1,10 @@
+{
+  "name": "ias2-commerce",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Modular vanilla-JS e-commerce demo with customer and admin flows",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}

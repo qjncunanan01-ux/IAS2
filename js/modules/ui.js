@@ -486,6 +486,10 @@ function renderAdmin() {
       ${renderAdminPanel()}
     </div>
   `;
+  // CSP-safe chart widths (inline style attributes are forbidden)
+  els.viewRoot.querySelectorAll(".chart-fill").forEach((fill) => {
+    fill.style.width = `${fill.dataset.width || 4}%`;
+  });
   refreshIcons();
 }
 
@@ -509,10 +513,11 @@ function renderAdminAnalytics() {
     .map(
       (row, index) => `
         <div class="chart-row">
-          <span class="chart-label">${escapeHtml(row.category)}</span>
-          <div class="chart-track">
-            <div class="chart-fill hue-${index % 8}" style="width: ${Math.max(4, Math.round((row.total / max) * 100))}%"></div>
-          </div>
+          <span class="chart-label">${escapeHtml(row.category)}</span>            <div class="chart-track">
+              <!-- width is applied via JS (CSSOM) after render: CSP forbids
+                   inline style attributes but not el.style writes -->
+              <div class="chart-fill hue-${index % 8}" data-width="${Math.max(4, Math.round((row.total / max) * 100))}"></div>
+            </div>
           <span class="chart-value">${formatMoney(row.total)}</span>
         </div>`
     )

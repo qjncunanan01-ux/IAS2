@@ -4,6 +4,7 @@ import { createId, escapeHtml, escapeAttribute, formatMoney } from "../utils/hel
 import { refreshIcons, focusFirstFocusable, formatDate } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
+import { validateQuantity } from "../utils/security.js";
 import { getCurrentUser } from "./auth.js";
 import { render } from "./ui.js";
 
@@ -55,12 +56,18 @@ export function saveOrder(form) {
   }
 
   const item = state.items.find((candidate) => candidate.id === String(data.get("itemId")));
-  const qty = Math.max(1, Number(data.get("qty")));
 
   if (!item) {
     showError("Choose a valid item.");
     return;
   }
+
+  const qtyCheck = validateQuantity(data.get("qty"), { min: 1, max: 1000 });
+  if (!qtyCheck.ok) {
+    showError(qtyCheck.error);
+    return;
+  }
+  const qty = qtyCheck.value;
 
   const order = {
     id: createId("order"),
@@ -200,7 +207,7 @@ function renderOrderDetail(order, user, currentUser, isAdminUser) {
   const currentStatus = order.status || "Processing";
   
   return `
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle" style="max-width: 720px;">
+    <div class="modal-panel panel-wide" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle">
       <div class="modal-header">
         <div>
           <p class="eyebrow">Order ${order.id}</p>

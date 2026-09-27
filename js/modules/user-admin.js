@@ -4,6 +4,7 @@ import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
+import { validateName, validateEmail, validatePasswordPolicy } from "../utils/security.js";
 import { wouldRemoveLastAdmin } from "./auth.js";
 import { render } from "./ui.js";
 import { hashPassword } from "../utils/password.js";
@@ -25,9 +26,17 @@ export function openUserForm(userId = "") {
 export async function saveUser(form) {
   const formId = form.dataset.id;
   const data = new FormData(form);
-  const email = String(data.get("email")).trim().toLowerCase();
   const existingUser = formId ? state.users.find((candidate) => candidate.id === formId) : null;
   const passwordInput = String(data.get("password") ?? "");
+
+  const nameCheck = validateName(data.get("name"));
+  if (!nameCheck.ok) return showError(nameCheck.error);
+
+  const emailCheck = validateEmail(data.get("email"));
+  if (!emailCheck.ok) return showError(emailCheck.error);
+  const email = emailCheck.value;
+
+  const role = String(data.get("role")) === "admin" ? "admin" : "user";
 
   const duplicate = state.users.find((user) => user.email.toLowerCase() === email && user.id !== formId);
   if (duplicate) {
@@ -40,6 +49,10 @@ export async function saveUser(form) {
     showError("A password is required for new users.");
     return;
   }
+  if (passwordInput) {
+    const policyCheck = validatePasswordPolicy(passwordInput);
+    if (!policyCheck.ok) return showError(policyCheck.error);
+  }
 
   const password = passwordInput
     ? await hashPassword(passwordInput)
@@ -47,10 +60,10 @@ export async function saveUser(form) {
 
   const user = {
     id: formId || createId("user"),
-    name: String(data.get("name")).trim(),
+    name: nameCheck.value,
     email,
     password,
-    role: String(data.get("role")),
+    role,
     createdAt: existingUser?.createdAt || new Date().toISOString()
   };
 

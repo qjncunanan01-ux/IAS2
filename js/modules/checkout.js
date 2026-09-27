@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { save } from "../utils/storage.js";
 import { createId, escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js";
+import { sanitizeText, sanitizeMultiline } from "../utils/security.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { getCartLines, renderCart } from "./cart.js";
@@ -74,13 +75,20 @@ export function placeCheckoutOrder(form) {
   }
 
   const data = new FormData(form);
+  const customerName = sanitizeText(data.get("name"), 80);
+  const address = sanitizeMultiline(data.get("address"), 300);
+  if (!customerName || !address) {
+    showError("Please complete the delivery details.");
+    return;
+  }
+
   const order = {
     id: createId("order"),
     userId: currentUser.id,
-    customerName: String(data.get("name")).trim(),
-    address: String(data.get("address")).trim(),
+    customerName,
+    address,
     paymentMethod: String(data.get("method")),
-    paymentReference: String(data.get("reference")).trim(),
+    paymentReference: sanitizeText(data.get("reference"), 40),
     status: "Paid",
     createdAt: new Date().toISOString(),
     items: lines.map(({ item, qty }) => ({

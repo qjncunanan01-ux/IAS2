@@ -5,6 +5,7 @@ import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
 import { render } from "./ui.js";
+import { sanitizeText, sanitizeMultiline, validateName, validateMoney, validateQuantity, validateImagePath } from "../utils/security.js";
 
 let els = {};
 
@@ -23,17 +24,47 @@ export function openItemForm(itemId = "") {
 export function saveItem(form) {
   const formId = form.dataset.id;
   const data = new FormData(form);
+
+  // Server-grade input validation for a client-only app: every field is
+  // sanitized, range-checked, and re-typed before it touches state.
+  const nameCheck = validateName(data.get("name"));
+  if (!nameCheck.ok) return showError(nameCheck.error);
+
+  const category = sanitizeText(data.get("category"), 40);
+  if (!category) return showError("Category is required.");
+
+  const priceCheck = validateMoney(data.get("price"));
+  if (!priceCheck.ok) return showError(priceCheck.error);
+
+  const stockCheck = validateQuantity(data.get("stock"));
+  if (!stockCheck.ok) return showError(stockCheck.error);
+
+  const imageCheck = validateImagePath(data.get("image"));
+  if (!imageCheck.ok) return showError(imageCheck.error);
+
+  const description = sanitizeMultiline(data.get("description"), 400);
+  if (!description) return showError("Description is required.");
+
+  // "Audio" and "audio" are the same category: reuse the existing casing.
+  const existingCategory = state.items.find((candidate) => candidate.category?.toLowerCase() === category.toLowerCase());
+
+  const featured = data.get("featured") === "on";
   const item = {
     id: formId || createId("item"),
-    name: String(data.get("name")).trim(),
-    category: String(data.get("category")).trim(),
-    price: Number(data.get("price")),
-    stock: Number(data.get("stock")),
-    image: String(data.get("image")).trim(),
-    description: String(data.get("description")).trim(),
+    name: nameCheck.value,
+    category: existingCategory?.category || category,
+    price: priceCheck.value,
+    stock: stockCheck.value,
+    image: imageCheck.value,
+    description,
     active: String(data.get("active")) === "true",
-    featured: data.get("featured") === "on"
+    featured
   };
+
+  // Only one featured product at a time: setting the flag clears it elsewhere.
+  if (featured) {
+    state.items = state.items.map((candidate) => (candidate.featured ? { ...candidate, featured: false } : candidate));
+  }
 
   if (formId) {
     state.items = state.items.map((candidate) => (candidate.id === formId ? item : candidate));
