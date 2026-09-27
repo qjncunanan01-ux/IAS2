@@ -129,6 +129,8 @@ The deploy zip is **built automatically by GitHub Actions on every push** to `ma
 
 To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the File Manager (or FTP), extract it in place, and make sure `index.html` sits directly inside `htdocs`. The app is fully static — no PHP or database needed.
 
+**Full runbook:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the CI pipeline stage by stage, the required secrets (and how to rotate them), release verification, troubleshooting, manual fallback, and rollback.
+
 ## Development
 
 Run the dependency-free unit tests (68 tests: analytics logic, password hashing,

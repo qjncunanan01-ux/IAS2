@@ -86,8 +86,9 @@ jobs:
 
   # Auto-deploy to InfinityFree. Required settings (Settings > Secrets and
   # variables > Actions):
-  #   Secrets:   FTP_HOST (ftpupload.net), FTP_USERNAME (epiz_...),
+  #   Secrets:   FTP_HOST (ftpupload.net), FTP_USERNAME (if0_...),
   #              FTP_PASSWORD (from the FTP Details tab)
+  # Full runbook: DEPLOYMENT.md
   # The job always runs and fails with a precise message if a secret is
   # missing, so a misconfigured deploy is visible instead of silently skipped.
   deploy:
@@ -102,7 +103,7 @@ jobs:
         run: |
           missing=0
           [ -z "$FTP_HOST" ] && { echo "::error::Secret FTP_HOST is missing (Settings > Secrets and variables > Actions > Secrets)"; missing=1; }
-          [ -z "$FTP_USERNAME" ] && { echo "::error::Secret FTP_USERNAME is missing (should look like epiz_12345678)"; missing=1; }
+          [ -z "$FTP_USERNAME" ] && { echo "::error::Secret FTP_USERNAME is missing (should look like if0_12345678)"; missing=1; }
           [ -z "$FTP_PASSWORD" ] && { echo "::error::Secret FTP_PASSWORD is missing (reset it in the InfinityFree FTP Details tab)"; missing=1; }
           exit $missing
 
