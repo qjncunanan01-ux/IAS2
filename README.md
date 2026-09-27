@@ -131,7 +131,7 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (56 tests: analytics logic, password hashing,
+Run the dependency-free unit tests (58 tests: analytics logic, password hashing,
 XSS escaping, input validation, the lockout state machine, import sanitization,
 session expiry):
 
@@ -177,11 +177,14 @@ policy (8+ chars, mixed case, digits) is enforced at credential creation.
 
 **Brute-force resistance** — after 5 failed logins an account key locks with
 escalating delays (30s → 15min, persisted across reloads); while locked even
-the correct password is rejected, and the remaining attempts are shown to the
-legit user. Error messages are deliberately generic
-(`"Email or password did not match."`) so attackers cannot enumerate which
-emails hold accounts, and both success/failure paths do equivalent hashing
-work to blunt timing analysis.
+the correct password is rejected. The login form itself shows a persistent
+lockout notice with a live countdown and a disabled submit button — it
+persists across modal close/reopen (with the attempted email prefilled) and
+the form re-enables itself the moment the lock lifts. As the limit
+approaches, an inline warning shows the attempts remaining. Error messages
+are deliberately generic (`"Email or password did not match."`) so attackers
+cannot enumerate which emails hold accounts, and both success/failure paths
+do equivalent hashing work to blunt timing analysis.
 
 **Session inactivity timeout** — after 15 minutes without interaction the user
 is logged out automatically. A 60-second warning banner with a live countdown

@@ -3,10 +3,10 @@ import { save } from "../utils/storage.js";
 import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
-import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, sessionExpired, LAST_ACTIVITY_KEY } from "../utils/security.js";
+import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, lockoutRemainingMs, formatCountdown, sessionExpired, LAST_ACTIVITY_KEY } from "../utils/security.js";
 import { resetSessionActivity } from "./session.js";
 import { rearmSession } from "./session.js";
-import { showToast, showError, showSuccess } from "../components/toast.js";
+import { showToast, showError, showSuccess, showInfo } from "../components/toast.js";
 import { render } from "./ui.js";
 
 /* ---------- login rate limiting (persisted per email) ---------- */
@@ -108,15 +108,129 @@ function sweepLockouts() {
   }
 }
 
-export function openAuth(mode = "login") {
+/* ---------- in-form lockout banner ---------- */
+
+const BANNER_ID = "authLockoutBanner";
+let lockoutTimerId = null;
+let lastPrefillEmail = "";
+
+function stopLockoutCountdown() {
+  if (lockoutTimerId) {
+    clearInterval(lockoutTimerId);
+    lockoutTimerId = null;
+  }
+}
+
+// Renders (or removes) the in-form lockout banner for the given email and
+// keeps a live countdown running; the submit button stays disabled until the
+// lock lifts, then the form re-enables itself without losing typed input.
+function updateLockoutBanner(email) {
+  const form = els.authForm;
+  if (!form) return;
+  const remaining = email ? lockoutRemainingMs(getLockoutRecord(email), Date.now()) : 0;
+
+  if (remaining <= 0) {
+    document.getElementById(BANNER_ID)?.remove();
+    stopLockoutCountdown();
+    const submit = form.querySelector('[type="submit"]');
+    if (submit) {
+      submit.removeAttribute("disabled");
+      submit.textContent = state.authMode === "register" ? "Create Account" : "Login";
+    }
+    return;
+  }
+
+  // Locked: disable the button and show the persistent in-form notice.
+  const submit = form.querySelector('[type="submit"]');
+  if (submit) {
+    submit.setAttribute("disabled", "");
+    submit.textContent = "Locked";
+  }
+  let banner = document.getElementById(BANNER_ID);
+  if (!banner) {
+    banner = createLockoutBanner();
+    form.prepend(banner);
+  }
+  banner.querySelector(".lockout-message").textContent =
+    "Too many failed attempts. For your security, login is paused for this account.";
+
+  const tick = () => {
+    const msLeft = lockoutRemainingMs(getLockoutRecord(email), Date.now());
+    if (msLeft <= 0) {
+      stopLockoutCountdown();
+      banner.remove();
+      const submit = form.querySelector('[type="submit"]');
+      if (submit) {
+        submit.removeAttribute("disabled");
+        submit.textContent = state.authMode === "register" ? "Create Account" : "Login";
+      }
+      showInfo("Login unlocked — you can try again.");
+      return;
+    }
+    const label = banner.querySelector(".lockout-count");
+    if (label) label.textContent = formatCountdown(msLeft);
+  };
+  tick();
+  stopLockoutCountdown();
+  lockoutTimerId = setInterval(tick, 1000);
+}
+
+function createLockoutBanner() {
+  const banner = document.createElement("div");
+  banner.id = BANNER_ID;
+  banner.className = "lockout-banner";
+  banner.setAttribute("role", "alert");
+  banner.innerHTML = `
+    <div class="lockout-head"><i data-lucide="lock"></i><strong>Account temporarily locked</strong></div>
+    <p class="lockout-message"></p>
+    <p class="lockout-timer">You can try again in <strong class="lockout-count">--:--</strong></p>
+  `;
+  return banner;
+}
+
+/* ---------- attempts-remaining inline hint ---------- */
+
+function setAttemptHint(remaining) {
+  const form = els.authForm;
+  if (!form) return;
+  let hint = document.getElementById("authAttemptHint");
+  if (!hint) {
+    hint = document.createElement("p");
+    hint.id = "authAttemptHint";
+    hint.className = "attempt-hint";
+    hint.setAttribute("role", "status");
+    form.prepend(hint);
+  }
+  hint.textContent = `Warning: ${remaining} attempt${remaining === 1 ? "" : "s"} remaining before a temporary lock.`;
+}
+
+function clearAttemptHint() {
+  document.getElementById("authAttemptHint")?.remove();
+}
+
+export function openAuth(mode = "login", prefillEmail = "") {
   sweepLockouts();
   state.authMode = mode;
+  // Remember the last attempted email so reopening the form shows the right
+  // account's lockout countdown immediately.
+  const effectiveEmail = prefillEmail || lastPrefillEmail;
+  lastPrefillEmail = effectiveEmail;
   renderAuthForm();
+  if (effectiveEmail) {
+    const emailInput = els.authForm?.querySelector("#authEmail");
+    if (emailInput) emailInput.value = effectiveEmail;
+  }
+  clearAttemptHint();
+  updateLockoutBanner(effectiveEmail);
   els.authModal?.classList.remove("hidden");
+  refreshIcons();
   focusFirstFocusable(els.authModal);
 }
 
 export function closeAuth() {
+  stopLockoutCountdown();
+  document.getElementById(BANNER_ID)?.remove();
+  clearAttemptHint();
   els.authModal?.classList.add("hidden");
 }
 
@@ -169,12 +283,16 @@ export async function login(form) {
   // accounts (like the demo seeds) may predate it. The policy guards new
   // credentials at registration and admin creation only.
   const email = emailCheck.value;
+  // Remember the attempted account so the in-form lockout notice and its
+  // countdown reappear if the modal is closed and reopened mid-lock.
+  lastPrefillEmail = email;
 
   // Lockout gate: while locked, even a correct password is rejected.
   const now = Date.now();
   const gate = attemptLogin(getLockoutRecord(email), now, false);
   if (!gate.allowed) {
     showError(lockoutMessage(gate.retryInMs));
+    updateLockoutBanner(email);
     return;
   }
 
@@ -196,9 +314,17 @@ export async function login(form) {
           ? `Email or password did not match. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
           : "Email or password did not match."
     );
+    if (fail.lockedForMs) {
+      clearAttemptHint();
+      updateLockoutBanner(email);
+    } else if (remaining <= 2) {
+      setAttemptHint(remaining);
+    }
     return;
   }
 
+  lastPrefillEmail = "";
+  clearAttemptHint();
   setLockoutRecord(email, { count: 0, until: 0 });
   touchSession();
   rearmSession();

@@ -15,6 +15,7 @@ const {
   validateImagePath,
   attemptLogin,
   lockoutMessage,
+  lockoutRemainingMs,
   LOCKOUT
 } = await import("../js/utils/security.js");
 
@@ -169,6 +170,29 @@ test("a successful login clears the failure counter", () => {
   assert.equal(result.allowed, true);
   assert.deepEqual(result.next, { count: 0, until: 0 });
 });
+
+test("lockoutRemainingMs reads the clock against the lock deadline", () => {
+  const now = 1_000_000;
+  assert.equal(lockoutRemainingMs(null, now), 0, "no record: not locked");
+  assert.equal(lockoutRemainingMs({ count: 5, until: 0 }, now), 0, "zero deadline: not locked");
+  assert.equal(lockoutRemainingMs({ count: 5, until: now - 1 }, now), 0, "expired: not locked");
+  assert.equal(lockoutRemainingMs({ count: 5, until: now + 30_000 }, now), 30_000);
+  assert.equal(lockoutRemainingMs({ count: 9, until: now + 90_000 }, now), 90_000);
+});
+
+/* ---------- attempts-remaining hint (behavioral, via attemptLogin) ---------- */
+
+test("attempts-remaining is surfaced before the lock engages", () => {
+  let record = null;
+  for (let expected = 4; expected >= 1; expected -= 1) {
+    const result = attemptLogin(record, 1000, false);
+    assert.equal(result.attemptsRemaining, expected);
+    record = result.next;
+  }
+  assert.equal(attemptLogin(record, 1000, false).lockedForMs > 0, true);
+});
+
+/* ---------- lockoutMessage ---------- */
 
 test("lockoutMessage speaks in seconds then minutes", () => {
   assert.match(lockoutMessage(45_000), /seconds/);

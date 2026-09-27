@@ -127,6 +127,13 @@ export function lockoutMessage(retryInMs) {
   return `Too many failed attempts. Try again in ${seconds} second${seconds === 1 ? "" : "s"}.`;
 }
 
+// How long until an active lock lifts (0 when not locked) — used by the
+// in-form countdown banner.
+export function lockoutRemainingMs(record, now) {
+  const until = Number(record?.until || 0);
+  return until > now ? until - now : 0;
+}
+
 /* ---------- import validation (fail-closed) ---------- */
 // (session helpers live at the bottom of this file)
 

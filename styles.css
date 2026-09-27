@@ -2568,3 +2568,47 @@ button.alert-banner:hover {
   font-variant-numeric: tabular-nums;
   color: var(--amber);
 }
+
+/* ===== IN-FORM LOCKOUT NOTICE (login form) ===== */
+.lockout-banner {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--danger);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  animation: lockoutIn var(--duration-slow) var(--ease-spring);
+}
+@keyframes lockoutIn {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+.lockout-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+.lockout-head svg {
+  width: 16px;
+  height: 16px;
+}
+.lockout-message {
+  font-size: 0.84rem;
+  color: var(--ink);
+}
+.lockout-timer {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.lockout-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--danger);
+}
+.attempt-hint {
+  font-size: 0.82rem;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
