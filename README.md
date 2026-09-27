@@ -205,7 +205,11 @@ totals are always recomputed from the validated lines so tampered envelopes
 cannot inflate revenue.
 
 All of this logic is pure and covered by `tests/security.test.js` and
-`tests/import-session.test.js` (54 tests total).
+`tests/import-session.test.js` (58 tests total). For hands-on verification,
+**[SECURITY-TESTING.md](SECURITY-TESTING.md)** provides a 23-point checklist
+with concrete attack payloads (stored XSS, CSP bypass, brute force, lockout,
+privilege escalation, malicious imports, session attacks) and expected
+outcomes.
 
 Still true regardless: **do not use for real commerce without a backend** —
 server-side auth (bcrypt/argon2), server-enforced authorization, real payment
