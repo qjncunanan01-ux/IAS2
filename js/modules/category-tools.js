@@ -5,13 +5,24 @@ import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
 import { validateName } from "../utils/security.js";
+import { isAdmin } from "./auth.js";
 import { render } from "./ui.js";
+
+// Action-level guard shared by create/rename/delete.
+function requireAdmin() {
+  if (!isAdmin()) {
+    showError("Admin access required.");
+    return false;
+  }
+  return true;
+}
 
 function modalLayer() {
   return document.querySelector("#entityModal");
 }
 
 export function createCategory(form = null) {
+  if (!requireAdmin()) return;
   // Called without a form: open the modal. Called with a form: save it.
   if (!form) {
     modalLayer().innerHTML = renderCategoryForm();
@@ -52,6 +63,7 @@ export function createCategory(form = null) {
 }
 
 export function renameCategory(categoryName) {
+  if (!requireAdmin()) return;
   const item = state.items.find((candidate) => candidate.category === categoryName);
   if (!item) {
     showError("Category not found.");
@@ -65,6 +77,7 @@ export function renameCategory(categoryName) {
 }
 
 export function submitRenameCategory(form) {
+  if (!requireAdmin()) return;
   const data = new FormData(form);
   const original = String(form.dataset.original || "");
   const nameCheck = validateName(data.get("name"), { min: 2, max: 40 });
@@ -98,6 +111,7 @@ export function submitRenameCategory(form) {
 }
 
 export function deleteCategory(categoryName) {
+  if (!requireAdmin()) return;
   const itemsInCategory = state.items.filter((item) => item.category === categoryName);
   const activeItems = itemsInCategory.filter((item) => item.active);
 

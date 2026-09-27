@@ -3,7 +3,7 @@ import { escapeHtml, escapeAttribute, formatMoney, formatDate } from "../utils/h
 import { refreshIcons, focusFirstFocusable, debounce } from "../utils/helpers.js";
 import { showToast, showError, showSuccess, showWarning } from "../components/toast.js";
 import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js";
-import { getCurrentUser, isAdmin, ensureCurrentUserExists } from "./auth.js";
+import { getCurrentUser, isAdmin, ensureCurrentUserExists, touchSession } from "./auth.js";
 import { openAuth, closeAuth, login, register, logout } from "./auth.js";
 import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js";
 import { applyTheme, toggleTheme } from "./theme.js";
@@ -227,6 +227,7 @@ function handleChange(event) {
 
 export function render() {
   ensureCurrentUserExists();
+  touchSession();
   applyTheme();
   renderNavigation();
   renderCategoryFilter();

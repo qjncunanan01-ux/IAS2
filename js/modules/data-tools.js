@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { load, save, exportData, importData, clearAllData, STORAGE_PREFIX } from "../utils/storage.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
+import { isAdmin } from "./auth.js";
 
 let els = {};
 
@@ -9,7 +10,18 @@ export function initDataTools(elements) {
   els = elements;
 }
 
+// Action-level guard: the tools modal is admin-only in the UI; entry points
+// re-check so console-invoked calls fail closed.
+function requireAdmin() {
+  if (!isAdmin()) {
+    showError("Admin access required.");
+    return false;
+  }
+  return true;
+}
+
 export function openDataTools() {
+  if (!requireAdmin()) return;
   els.dataToolsModal.innerHTML = renderDataTools();
   els.dataToolsModal.classList.remove("hidden");
   refreshIcons();
@@ -22,6 +34,7 @@ export function closeDataTools() {
 }
 
 export function handleExport() {
+  if (!requireAdmin()) return;
   const data = exportData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -34,6 +47,7 @@ export function handleExport() {
 }
 
 export function handleImport(file) {
+  if (!requireAdmin()) return;
   if (!file) return;
 
   const reader = new FileReader();
@@ -68,7 +82,12 @@ export function handleImport(file) {
       return;
     }
 
-    importData(data);
+    try {
+      importData(data);
+    } catch (error) {
+      showError(error.message);
+      return;
+    }
     showSuccess("Data imported successfully. Reloading...");
     setTimeout(() => window.location.reload(), 1000);
   };
@@ -76,6 +95,7 @@ export function handleImport(file) {
 }
 
 export function handleClearAll() {
+  if (!requireAdmin()) return;
   if (confirm("This will delete ALL data. Are you sure?")) {
     clearAllData();
     showSuccess("All data cleared. Reloading...");

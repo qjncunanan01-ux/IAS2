@@ -4,6 +4,7 @@ import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
+import { isAdmin } from "./auth.js";
 import { render } from "./ui.js";
 import { sanitizeText, sanitizeMultiline, validateName, validateMoney, validateQuantity, validateImagePath } from "../utils/security.js";
 
@@ -13,7 +14,18 @@ export function initItemAdmin(elements) {
   els = elements;
 }
 
+// Action-level guard: the UI hides admin buttons from customers, but every
+// entry point re-checks privilege so console-invoked calls cannot mutate data.
+function requireAdmin() {
+  if (!isAdmin()) {
+    showError("Admin access required.");
+    return false;
+  }
+  return true;
+}
+
 export function openItemForm(itemId = "") {
+  if (!requireAdmin()) return;
   const item = state.items.find((candidate) => candidate.id === itemId);
   els.entityModal.innerHTML = renderItemForm(item || {});
   els.entityModal.classList.remove("hidden");
@@ -22,6 +34,7 @@ export function openItemForm(itemId = "") {
 }
 
 export function saveItem(form) {
+  if (!requireAdmin()) return;
   const formId = form.dataset.id;
   const data = new FormData(form);
 
@@ -79,6 +92,7 @@ export function saveItem(form) {
 }
 
 export function deleteItem(itemId) {
+  if (!requireAdmin()) return;
   const item = state.items.find((candidate) => candidate.id === itemId);
   if (!item) return;
 

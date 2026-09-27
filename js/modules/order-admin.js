@@ -2,10 +2,10 @@ import { state } from "./state.js";
 import { save } from "../utils/storage.js";
 import { createId, escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable, formatDate } from "../utils/helpers.js";
-import { showToast, showError, showSuccess } from "../components/toast.js";
+import { showToast, showError, showSuccess, showWarning } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
 import { validateQuantity } from "../utils/security.js";
-import { getCurrentUser } from "./auth.js";
+import { getCurrentUser, isAdmin } from "./auth.js";
 import { render } from "./ui.js";
 
 let els = {};
@@ -14,7 +14,18 @@ export function initOrderAdmin(elements) {
   els = elements;
 }
 
+// Action-level admin guard for mutating entry points (openOrderDetail stays
+// separately guarded so customers can open their own orders).
+function requireAdmin() {
+  if (!isAdmin()) {
+    showError("Admin access required.");
+    return false;
+  }
+  return true;
+}
+
 export function openOrderForm(orderId = "") {
+  if (!requireAdmin()) return;
   if (!state.users.length || !state.items.length) {
     showError("Create at least one user and one item first.");
     return;
@@ -28,6 +39,7 @@ export function openOrderForm(orderId = "") {
 }
 
 export function saveOrder(form) {
+  if (!requireAdmin()) return;
   const formId = form.dataset.id;
   const data = new FormData(form);
   const user = state.users.find((candidate) => candidate.id === String(data.get("userId")));
@@ -97,6 +109,7 @@ export function saveOrder(form) {
 }
 
 export function deleteOrder(orderId) {
+  if (!requireAdmin()) return;
   state.orders = state.orders.filter((candidate) => candidate.id !== orderId);
   save("orders", state.orders);
   showSuccess("Order deleted.");
@@ -106,11 +119,17 @@ export function deleteOrder(orderId) {
 export function openOrderDetail(orderId) {
   const order = state.orders.find((candidate) => candidate.id === orderId);
   if (!order) return;
-  
-  const user = state.users.find((candidate) => candidate.id === order.userId);
+
   const currentUser = state.users.find((candidate) => candidate.id === state.currentUserId);
-  // Status editing is an admin-only action; customers get a read-only view of their order.
   const isAdminUser = currentUser?.role === "admin";
+  // Customers may only open their own order details — the "View" button only
+  // renders on owned cards, but a console-invoked call must fail closed too.
+  if (!isAdminUser && order.userId !== currentUser?.id) {
+    showWarning("You can only view your own orders.");
+    return;
+  }
+
+  const user = state.users.find((candidate) => candidate.id === order.userId);
   
   els.orderDetailModal.innerHTML = renderOrderDetail(order, user, currentUser, isAdminUser);
   els.orderDetailModal.classList.remove("hidden");

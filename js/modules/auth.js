@@ -3,7 +3,8 @@ import { save } from "../utils/storage.js";
 import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
-import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage } from "../utils/security.js";
+import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, sessionExpired } from "../utils/security.js";
+import { resetSessionActivity } from "./session.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { render } from "./ui.js";
 
@@ -32,13 +33,8 @@ function setLockoutRecord(email, record) {
   }
 }
 
-// Record a failed attempt and return how long (if at all) the account is
-// now locked. The state machine lives in utils/security.js (pure, tested).
-function registerFailedAttempt(email) {
-  const fail = attemptLogin(getLockoutRecord(email), Date.now(), false);
-  setLockoutRecord(email, fail.next);
-  return fail.lockedForMs || 0;
-}
+// NOTE: failed attempts are recorded inline in login() so the remaining-
+// attempts count can be surfaced to the user in the same pass.
 
 let els = {};
 
@@ -61,11 +57,56 @@ export function ensureCurrentUserExists() {
   }
 }
 
+// Session-expiry check on boot: a persisted login from a previous visit is
+// only honored if the last recorded activity is inside the timeout window.
+export function enforceSessionExpiry() {
+  if (!state.currentUserId) return;
+  const raw = Number(localStorage.getItem("ias2.commerce.lastActivity") || "0");
+  if (raw && sessionExpired(raw, Date.now())) {
+    state.currentUserId = "";
+    localStorage.removeItem("ias2.commerce.currentUserId");
+    localStorage.removeItem("ias2.commerce.lastActivity");
+    showToast("Session expired. Please log in again.", "warning");
+  }
+}
+
+export function touchSession() {
+  resetSessionActivity();
+  try {
+    localStorage.setItem("ias2.commerce.lastActivity", String(Date.now()));
+  } catch {
+    /* storage unavailable: session expiry just won't persist */
+  }
+}
+
 export function wouldRemoveLastAdmin(userId, nextRole) {
   return state.users.filter((user) => (user.id === userId ? nextRole : user.role) === "admin").length === 0;
 }
 
+// Housekeeping: drop lockout records that expired over a day ago (or are
+// corrupt) so failed-login artifacts don't accumulate forever.
+function sweepLockouts() {
+  try {
+    const now = Date.now();
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(LOCKOUT_PREFIX))
+      .forEach((key) => {
+        try {
+          const record = JSON.parse(localStorage.getItem(key));
+          if (!record || (record.until && now - record.until > 24 * 60 * 60_000)) {
+            localStorage.removeItem(key);
+          }
+        } catch {
+          localStorage.removeItem(key);
+        }
+      });
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function openAuth(mode = "login") {
+  sweepLockouts();
   state.authMode = mode;
   renderAuthForm();
   els.authModal?.classList.remove("hidden");
@@ -142,12 +183,21 @@ export async function login(form) {
     : await verifyPassword(password, "sha256:00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000");
 
   if (!result.valid) {
-    const lockedFor = registerFailedAttempt(email);
-    showError(lockedFor ? lockoutMessage(lockedFor) : "Email or password did not match.");
+    const fail = attemptLogin(getLockoutRecord(email), Date.now(), false);
+    setLockoutRecord(email, fail.next);
+    const remaining = fail.attemptsRemaining;
+    showError(
+      fail.lockedForMs
+        ? lockoutMessage(fail.lockedForMs)
+        : remaining <= 2
+          ? `Email or password did not match. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+          : "Email or password did not match."
+    );
     return;
   }
 
   setLockoutRecord(email, { count: 0, until: 0 });
+  touchSession();
 
   // Transparent upgrade: legacy plaintext seed accounts are hashed on first login.
   if (result.upgrade) {
@@ -202,17 +252,19 @@ export async function register(form) {
   save("users", state.users);
   state.currentUserId = user.id;
   localStorage.setItem("ias2.commerce.currentUserId", user.id);
+  touchSession();
   closeAuth();
   showSuccess("Account created.");
   render();
 }
 
-export function logout() {
+export function logout(message = "Logged out.") {
   state.currentUserId = "";
   localStorage.removeItem("ias2.commerce.currentUserId");
+  localStorage.removeItem("ias2.commerce.lastActivity");
   if (state.view === "admin" || state.view === "orders") {
     state.view = "shop";
   }
-  showToast("Logged out.");
+  showToast(message, message.includes("expired") ? "warning" : "info");
   render();
 }

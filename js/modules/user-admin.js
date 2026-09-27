@@ -5,7 +5,7 @@ import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { closeEntity } from "./modals.js";
 import { validateName, validateEmail, validatePasswordPolicy } from "../utils/security.js";
-import { wouldRemoveLastAdmin } from "./auth.js";
+import { wouldRemoveLastAdmin, isAdmin } from "./auth.js";
 import { render } from "./ui.js";
 import { hashPassword } from "../utils/password.js";
 
@@ -15,7 +15,18 @@ export function initUserAdmin(elements) {
   els = elements;
 }
 
+// Action-level guard: re-checks privilege on every entry point so console-
+// invoked calls cannot mutate data the UI would have hidden.
+function requireAdmin() {
+  if (!isAdmin()) {
+    showError("Admin access required.");
+    return false;
+  }
+  return true;
+}
+
 export function openUserForm(userId = "") {
+  if (!requireAdmin()) return;
   const user = state.users.find((candidate) => candidate.id === userId);
   els.entityModal.innerHTML = renderUserForm(user || {});
   els.entityModal.classList.remove("hidden");
@@ -24,6 +35,7 @@ export function openUserForm(userId = "") {
 }
 
 export async function saveUser(form) {
+  if (!requireAdmin()) return;
   const formId = form.dataset.id;
   const data = new FormData(form);
   const existingUser = formId ? state.users.find((candidate) => candidate.id === formId) : null;
@@ -85,6 +97,7 @@ export async function saveUser(form) {
 }
 
 export function deleteUser(userId) {
+  if (!requireAdmin()) return;
   const currentUser = state.users.find(user => user.id === state.currentUserId);
   const user = state.users.find((candidate) => candidate.id === userId);
   if (!user) return;

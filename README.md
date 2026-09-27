@@ -131,8 +131,9 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (45 tests: analytics logic, password hashing,
-XSS escaping, input validation, the lockout state machine):
+Run the dependency-free unit tests (54 tests: analytics logic, password hashing,
+XSS escaping, input validation, the lockout state machine, import sanitization,
+session expiry):
 
 ```bash
 npm test          # or: node --test "tests/*.test.js"
@@ -176,12 +177,29 @@ policy (8+ chars, mixed case, digits) is enforced at credential creation.
 
 **Brute-force resistance** — after 5 failed logins an account key locks with
 escalating delays (30s → 15min, persisted across reloads); while locked even
-the correct password is rejected. Error messages are deliberately generic
+the correct password is rejected, and the remaining attempts are shown to the
+legit user. Error messages are deliberately generic
 (`"Email or password did not match."`) so attackers cannot enumerate which
 emails hold accounts, and both success/failure paths do equivalent hashing
 work to blunt timing analysis.
 
-All of this logic is pure and covered by `tests/security.test.js`.
+**Session inactivity timeout** — after 15 minutes without interaction the user
+is logged out automatically (the check also runs on page load, so a stale
+persisted login from a previous visit is revoked immediately).
+
+**Defense against privilege escalation** — admin operations (items, users,
+orders, categories, data tools) re-check privileges at the action level, not
+just in the UI: console-invoked calls from a customer session fail closed.
+Customers can only open order details for their own orders.
+
+**Fail-closed imports** — imported JSON is fully validated and sanitized
+(emails, roles, image paths, prices, quantities, order statuses) before
+anything is written; one malformed record rejects the entire file, and order
+totals are always recomputed from the validated lines so tampered envelopes
+cannot inflate revenue.
+
+All of this logic is pure and covered by `tests/security.test.js` and
+`tests/import-session.test.js` (54 tests total).
 
 Still true regardless: **do not use for real commerce without a backend** —
 server-side auth (bcrypt/argon2), server-enforced authorization, real payment

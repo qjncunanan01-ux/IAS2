@@ -111,7 +111,7 @@ export function attemptLogin(record, now, passwordOk, config = LOCKOUT) {
   }
   const count = current.count + 1;
   if (count < config.MAX_ATTEMPTS) {
-    return { allowed: true, next: { count, until: 0 } };
+    return { allowed: true, next: { count, until: 0 }, attemptsRemaining: config.MAX_ATTEMPTS - count };
   }
   const over = count - config.MAX_ATTEMPTS + 1;
   const penalty = Math.min(config.BASE_MS + (over - 1) * config.STEP_MS, config.MAX_MS);
@@ -125,4 +125,133 @@ export function lockoutMessage(retryInMs) {
     return `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
   }
   return `Too many failed attempts. Try again in ${seconds} second${seconds === 1 ? "" : "s"}.`;
+}
+
+/* ---------- import validation (fail-closed) ---------- */
+
+// Each sanitizer returns a cleaned copy of the imported collection, or null
+// if ANY record is malformed — the whole import is then rejected so corrupt
+// data can never be half-written into the store.
+
+export function sanitizeImportedUsers(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    const id = typeof row.id === "string" && row.id.trim() ? row.id.slice(0, 60) : "";
+    const email = validateEmail(row.email);
+    const name = validateName(row.name ?? email.value ?? "");
+    const password = String(row.password ?? "");
+    if (!id || !email.ok || !name.ok || !password || password.length > 200) return null;
+    out.push({
+      id,
+      name: name.value,
+      email: email.value,
+      password,
+      role: row.role === "admin" ? "admin" : "user",
+      createdAt: typeof row.createdAt === "string" ? row.createdAt.slice(0, 40) : new Date().toISOString()
+    });
+  }
+  return out;
+}
+
+export function sanitizeImportedItems(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    const id = typeof row.id === "string" && row.id.trim() ? row.id.slice(0, 60) : "";
+    const name = validateName(row.name ?? "");
+    const price = validateMoney(row.price ?? 0);
+    const stock = validateQuantity(row.stock ?? 0);
+    const image = validateImagePath(row.image || "assets/placeholder.svg");
+    if (!id || !name.ok || !price.ok || !stock.ok || !image.ok) return null;
+    out.push({
+      id,
+      name: name.value,
+      category: sanitizeText(row.category, 40) || "Uncategorized",
+      price: price.value,
+      stock: stock.value,
+      image: image.value,
+      description: sanitizeMultiline(row.description, 400) || name.value,
+      active: row.active !== false,
+      featured: Boolean(row.featured)
+    });
+  }
+  return out;
+}
+
+const ORDER_STATUSES = ["Processing", "Paid", "Completed", "Cancelled"];
+
+export function sanitizeImportedOrders(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    const id = typeof row.id === "string" && row.id.trim() ? row.id.slice(0, 60) : "";
+    if (!id) return null;
+    if (!Array.isArray(row.items)) return null;
+    const items = [];
+    for (const line of row.items) {
+      if (!line || typeof line !== "object" || Array.isArray(line)) return null;
+      const price = Number(line.price);
+      const qty = Math.floor(Number(line.qty));
+      if (!Number.isFinite(price) || price < 0 || !Number.isFinite(qty) || qty < 1) return null;
+      items.push({
+        itemId: String(line.itemId ?? "").slice(0, 60),
+        name: sanitizeText(line.name, 120),
+        price: Math.round(price * 100) / 100,
+        qty
+      });
+    }
+    const total = items.reduce((sum, line) => sum + line.price * line.qty, 0);
+    out.push({
+      id,
+      userId: typeof row.userId === "string" ? row.userId.slice(0, 60) : "",
+      customerName: sanitizeText(row.customerName, 80),
+      address: sanitizeMultiline(row.address, 300),
+      paymentMethod: sanitizeText(row.paymentMethod, 30) || "Unknown",
+      paymentReference: sanitizeText(row.paymentReference, 40),
+      status: ORDER_STATUSES.includes(row.status) ? row.status : "Processing",
+      createdAt: typeof row.createdAt === "string" ? row.createdAt.slice(0, 40) : new Date().toISOString(),
+      items,
+      // Always derived from the validated lines: a tampered envelope total
+      // (inflated or negative) can never survive an import.
+      total: Math.round(total * 100) / 100
+    });
+  }
+  return out;
+}
+
+export function sanitizeImportedCart(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    if (typeof row.itemId !== "string" || !row.itemId.trim()) return null;
+    const qty = Math.floor(Number(row.qty));
+    if (!Number.isFinite(qty) || qty < 1 || qty > 1000) return null;
+    out.push({ itemId: row.itemId.slice(0, 60), qty });
+  }
+  return out;
+}
+
+export function sanitizeImportedWishlist(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = [];
+  for (const row of rows) {
+    if (typeof row !== "string") return null;
+    const id = row.trim().slice(0, 60);
+    if (!id) return null;
+    out.push(id);
+  }
+  return out;
+}
+
+/* ---------- session inactivity ---------- */
+
+export const SESSION_TIMEOUT_MS = 15 * 60_000;
+
+export function sessionExpired(lastActivity, now, timeoutMs = SESSION_TIMEOUT_MS) {
+  return now - lastActivity >= timeoutMs;
 }

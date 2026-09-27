@@ -149,11 +149,11 @@
         <form class="form-grid" id="checkoutForm">
           <div class="field">
             <label for="checkoutName">Name</label>
-            <input id="checkoutName" name="name" required />
+            <input id="checkoutName" name="name" maxlength="80" autocomplete="name" required />
           </div>
           <div class="field">
             <label for="checkoutAddress">Delivery Address</label>
-            <textarea id="checkoutAddress" name="address" rows="3" required></textarea>
+            <textarea id="checkoutAddress" name="address" rows="3" maxlength="300" autocomplete="street-address" required></textarea>
           </div>
           <div class="field split-field">
             <span>
@@ -166,7 +166,7 @@
             </span>
             <span>
               <label for="paymentReference">Reference</label>
-              <input id="paymentReference" name="reference" placeholder="Last 4 or ref no." required />
+              <input id="paymentReference" name="reference" placeholder="Last 4 or ref no." maxlength="40" autocomplete="off" required />
             </span>
           </div>
           <p class="checkout-summary-line">

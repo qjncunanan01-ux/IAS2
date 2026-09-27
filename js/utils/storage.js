@@ -1,4 +1,11 @@
 import { showError, showWarning } from "../components/toast.js";
+import {
+  sanitizeImportedUsers,
+  sanitizeImportedItems,
+  sanitizeImportedOrders,
+  sanitizeImportedCart,
+  sanitizeImportedWishlist
+} from "./security.js";
 
 const STORAGE_PREFIX = "ias2.commerce.";
 const PERSISTED_KEYS = ["users", "items", "orders", "cart", "wishlist"];
@@ -49,12 +56,32 @@ function exportData() {
   };
 }
 
+// Fail-closed import: every record is validated and sanitized first; if ANY
+// collection contains a malformed record the whole import throws and nothing
+// is written. Previously raw imported objects landed in state untouched.
 function importData(data) {
+  const clean = {
+    users: "users" in data ? sanitizeImportedUsers(data.users) : undefined,
+    items: "items" in data ? sanitizeImportedItems(data.items) : undefined,
+    orders: "orders" in data ? sanitizeImportedOrders(data.orders) : undefined,
+    cart: "cart" in data ? sanitizeImportedCart(data.cart) : undefined,
+    wishlist: "wishlist" in data ? sanitizeImportedWishlist(data.wishlist) : undefined
+  };
+
+  const rejected = PERSISTED_KEYS.filter((key) => clean[key] === null);
+  if (rejected.length) {
+    throw new Error(`Import rejected: "${rejected.join(", ")}" contains invalid records.`);
+  }
+
   PERSISTED_KEYS.forEach((key) => {
-    if (Array.isArray(data[key])) save(key, data[key]);
+    if (Array.isArray(clean[key])) save(key, clean[key]);
   });
   if (data.theme === "light" || data.theme === "dark") {
-    localStorage.setItem(`${STORAGE_PREFIX}theme`, data.theme);
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}theme`, data.theme);
+    } catch {
+      /* storage unavailable */
+    }
   }
 }
 
