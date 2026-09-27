@@ -12,7 +12,7 @@ import { initQuickView } from "./modules/quick-view.js";
 import { initLightbox } from "./modules/lightbox.js";
 import { initDataTools } from "./modules/data-tools.js";
 import { initKeyboardShortcuts, setShortcutsEnabled as enableShortcuts } from "./modules/keyboard.js";
-import { initSession } from "./modules/session.js";
+import { initSession, rearmSession } from "./modules/session.js";
 import { setView } from "./modules/ui.js";
 import { logout, enforceSessionExpiry } from "./modules/auth.js";
 
@@ -26,7 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   render();
   // Auto-logout after 15 minutes of no interaction (security measure).
-  initSession(() => logout("For your security, you were logged out after 15 minutes of inactivity."));
+  initSession(
+    () => logout("For your security, you were logged out after 15 minutes of inactivity."),
+    () => Boolean(window.app.state.currentUserId)
+  );
 });
 
 window.app = {

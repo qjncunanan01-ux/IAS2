@@ -128,6 +128,7 @@ export function lockoutMessage(retryInMs) {
 }
 
 /* ---------- import validation (fail-closed) ---------- */
+// (session helpers live at the bottom of this file)
 
 // Each sanitizer returns a cleaned copy of the imported collection, or null
 // if ANY record is malformed — the whole import is then rejected so corrupt
@@ -251,7 +252,22 @@ export function sanitizeImportedWishlist(rows) {
 /* ---------- session inactivity ---------- */
 
 export const SESSION_TIMEOUT_MS = 15 * 60_000;
+export const SESSION_WARN_MS = 60_000;
+export const LAST_ACTIVITY_KEY = "ias2.commerce.lastActivity";
 
 export function sessionExpired(lastActivity, now, timeoutMs = SESSION_TIMEOUT_MS) {
   return now - lastActivity >= timeoutMs;
+}
+
+export function shouldWarnSession(lastActivity, now, timeoutMs = SESSION_TIMEOUT_MS, warnMs = SESSION_WARN_MS) {
+  const remaining = timeoutMs - (now - lastActivity);
+  return remaining > 0 && remaining <= warnMs;
+}
+
+// Countdown for the warning banner: "1:00", "0:45", "0:03".
+export function formatCountdown(msRemaining) {
+  const seconds = Math.max(0, Math.ceil(msRemaining / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
 }

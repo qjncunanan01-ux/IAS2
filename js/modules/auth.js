@@ -3,8 +3,9 @@ import { save } from "../utils/storage.js";
 import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
-import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, sessionExpired } from "../utils/security.js";
+import { validateEmail, validateName, validatePasswordPolicy, attemptLogin, lockoutMessage, sessionExpired, LAST_ACTIVITY_KEY } from "../utils/security.js";
 import { resetSessionActivity } from "./session.js";
+import { rearmSession } from "./session.js";
 import { showToast, showError, showSuccess } from "../components/toast.js";
 import { render } from "./ui.js";
 
@@ -61,19 +62,21 @@ export function ensureCurrentUserExists() {
 // only honored if the last recorded activity is inside the timeout window.
 export function enforceSessionExpiry() {
   if (!state.currentUserId) return;
-  const raw = Number(localStorage.getItem("ias2.commerce.lastActivity") || "0");
+  const raw = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || "0");
   if (raw && sessionExpired(raw, Date.now())) {
     state.currentUserId = "";
     localStorage.removeItem("ias2.commerce.currentUserId");
-    localStorage.removeItem("ias2.commerce.lastActivity");
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     showToast("Session expired. Please log in again.", "warning");
   }
 }
 
 export function touchSession() {
+  // Also refresh the session module's idle clock on every render, and keep
+  // the persisted timestamp exact (renders are infrequent, no throttle here).
   resetSessionActivity();
   try {
-    localStorage.setItem("ias2.commerce.lastActivity", String(Date.now()));
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
   } catch {
     /* storage unavailable: session expiry just won't persist */
   }
@@ -198,6 +201,7 @@ export async function login(form) {
 
   setLockoutRecord(email, { count: 0, until: 0 });
   touchSession();
+  rearmSession();
 
   // Transparent upgrade: legacy plaintext seed accounts are hashed on first login.
   if (result.upgrade) {
@@ -253,6 +257,7 @@ export async function register(form) {
   state.currentUserId = user.id;
   localStorage.setItem("ias2.commerce.currentUserId", user.id);
   touchSession();
+  rearmSession();
   closeAuth();
   showSuccess("Account created.");
   render();
@@ -261,7 +266,7 @@ export async function register(form) {
 export function logout(message = "Logged out.") {
   state.currentUserId = "";
   localStorage.removeItem("ias2.commerce.currentUserId");
-  localStorage.removeItem("ias2.commerce.lastActivity");
+  localStorage.removeItem(LAST_ACTIVITY_KEY);
   if (state.view === "admin" || state.view === "orders") {
     state.view = "shop";
   }

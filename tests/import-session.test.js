@@ -12,7 +12,10 @@ const {
   sanitizeImportedCart,
   sanitizeImportedWishlist,
   sessionExpired,
-  SESSION_TIMEOUT_MS
+  shouldWarnSession,
+  formatCountdown,
+  SESSION_TIMEOUT_MS,
+  SESSION_WARN_MS
 } = await import("../js/utils/security.js");
 
 /* ---------- imported users ---------- */
@@ -102,4 +105,21 @@ test("sessionExpired respects the 15 minute timeout", () => {
   assert.equal(sessionExpired(now - SESSION_TIMEOUT_MS, now), true, "exactly the timeout expires");
   assert.equal(sessionExpired(now - 16 * 60_000, now), true);
   assert.equal(sessionExpired(now, now), false);
+});
+
+test("shouldWarnSession opens a window only in the final minute", () => {
+  const now = 1_000_000_000;
+  assert.equal(shouldWarnSession(now - 5 * 60_000, now), false, "too early to warn");
+  assert.equal(shouldWarnSession(now - (SESSION_TIMEOUT_MS - 30_000), now), true, "30s left: warn");
+  assert.equal(shouldWarnSession(now - (SESSION_TIMEOUT_MS - 500), now), true, "0.5s left: warn");
+  assert.equal(shouldWarnSession(now - SESSION_TIMEOUT_MS, now), false, "already expired, not a warning");
+  assert.equal(shouldWarnSession(now, now), false, "fresh activity, no warning");
+});
+
+test("formatCountdown renders m:ss with zero padding", () => {
+  assert.equal(formatCountdown(60_000), "1:00");
+  assert.equal(formatCountdown(45_000), "0:45");
+  assert.equal(formatCountdown(5_000), "0:05");
+  assert.equal(formatCountdown(0), "0:00");
+  assert.equal(formatCountdown(-3_000), "0:00", "never goes negative");
 });

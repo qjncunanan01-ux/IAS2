@@ -131,7 +131,7 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (54 tests: analytics logic, password hashing,
+Run the dependency-free unit tests (56 tests: analytics logic, password hashing,
 XSS escaping, input validation, the lockout state machine, import sanitization,
 session expiry):
 
@@ -184,8 +184,11 @@ emails hold accounts, and both success/failure paths do equivalent hashing
 work to blunt timing analysis.
 
 **Session inactivity timeout** — after 15 minutes without interaction the user
-is logged out automatically (the check also runs on page load, so a stale
-persisted login from a previous visit is revoked immediately).
+is logged out automatically. A 60-second warning banner with a live countdown
+and a "Stay signed in" button appears before expiry; guests never see it, the
+expiry fires at most once per login, and the idle clock is seeded from the
+persisted timestamp — so reloading the page does not buy a fresh 15 minutes
+(the check also runs on page load, revoking stale logins immediately).
 
 **Defense against privilege escalation** — admin operations (items, users,
 orders, categories, data tools) re-check privileges at the action level, not
