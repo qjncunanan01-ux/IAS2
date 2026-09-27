@@ -81,17 +81,28 @@ jobs:
             `htdocs` folder, and extract in place.
           make_latest: true
 
-  # Auto-deploy to InfinityFree. Enable once, after creating your account:
-  #   1. Settings > Secrets and variables > Actions > Secrets: add
-  #      FTP_HOST (e.g. ftpupload.net), FTP_USERNAME (e.g. epiz_12345678),
-  #      FTP_PASSWORD (from your InfinityFree Accounts page)
-  #   2. Same page, Variables tab: add FTP_DEPLOY = true
-  # Every push to main then uploads the site straight to htdocs.
+  # Auto-deploy to InfinityFree. Required settings (Settings > Secrets and
+  # variables > Actions):
+  #   Secrets:   FTP_HOST (ftpupload.net), FTP_USERNAME (epiz_...),
+  #              FTP_PASSWORD (from the FTP Details tab)
+  # The job always runs and fails with a precise message if a secret is
+  # missing, so a misconfigured deploy is visible instead of silently skipped.
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: vars.FTP_DEPLOY == 'true'
     steps:
+      - name: Check deploy secrets are present
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          missing=0
+          [ -z "$FTP_HOST" ] && { echo "::error::Secret FTP_HOST is missing (Settings > Secrets and variables > Actions > Secrets)"; missing=1; }
+          [ -z "$FTP_USERNAME" ] && { echo "::error::Secret FTP_USERNAME is missing (should look like epiz_12345678)"; missing=1; }
+          [ -z "$FTP_PASSWORD" ] && { echo "::error::Secret FTP_PASSWORD is missing (reset it in the InfinityFree FTP Details tab)"; missing=1; }
+          exit $missing
+
       - name: Download built zip
         uses: actions/download-artifact@v4
         with:
