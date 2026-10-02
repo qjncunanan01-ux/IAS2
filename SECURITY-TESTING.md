@@ -403,10 +403,10 @@ origin can run on the page.
 
 The payloads above that test *pure logic* (lockout math, validators,
 image-path guard, import sanitization, session expiry, escaping) are also
-unit tests — 58 of them run in CI before every deploy:
+unit tests — 77 of them run in CI before every deploy:
 
 ```bash
-npm test        # node --test "tests/*.test.js"
+npm test        # node --test — auto-discovers every tests/*.test.js file
 ```
 
 `tests/security.test.js` (validators, image guard, lockout) and

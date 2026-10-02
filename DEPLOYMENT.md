@@ -20,7 +20,7 @@ Both jobs run on every push. `deploy` only starts after `build` succeeds.
 | Stage | Step | Fails the run when… |
 | --- | --- | --- |
 | **build** | Syntax-check all `js/**` | Any module has invalid JS (`node --check`) |
-| | `npm test` (68 tests) | Any unit test fails — broken code never ships |
+| | `npm test` (77 tests) | Any unit test fails — broken code never ships |
 | | `node tools/fingerprint.mjs --check` | Any asset URL lacks its current `?v=<hash>` (run `npm run fingerprint` and commit) |
 | | Verify required files | Any of `index.html`, `styles.css`, `js/main.js`, `assets/placeholder.svg`, `assets/vendor/lucide.min.js`, `404.html`, `.htaccess` is missing |
 | | Build `ias2-deploy.zip` | — (always succeeds if reached) |
@@ -39,6 +39,15 @@ Notes:
 - FTP-Deploy-Action writes a `.ftp-deploy-sync-state.json` into `htdocs`
   so unchanged files are skipped. Seeing it (and InfinityFree's own
   `DO NOT UPLOAD FILES HERE` / `.override`) in the file manager is normal.
+- **Cache policy exception:** `js/modules/state.js` is referenced *without*
+  a fingerprint (ESM module identity requires a bare specifier), so
+  `.htaccess` carves it out of the immutable JS rule and serves it
+  `no-cache, must-revalidate`. The `tests/cache-policy.test.js` suite fails
+  CI if `.htaccess` and `tools/fingerprint.mjs` ever disagree about this.
+  Note: visitors who loaded the site **before** this policy shipped may hold
+  the old `state.js` cached `immutable` for up to a year — harmless while
+  the file is unchanged, but if `state.js` ever changes, expect stragglers
+  until their cache expires (fingerprinted files don't have this problem).
 
 ## 2. Required secrets
 
@@ -87,7 +96,7 @@ pushing, or CI stops at the fingerprint gate:
 
 ```bash
 npm run fingerprint         # rewrites stale ?v= refs (or: node tools/fingerprint.mjs --apply)
-npm test                    # 68 tests, must stay green
+npm test                    # 77 tests (auto-discovered), must stay green
 git add -A && git commit -m "..." && git push origin main
 ```
 

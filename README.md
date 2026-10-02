@@ -133,9 +133,10 @@ To deploy: upload the zip to your InfinityFree account's `htdocs` folder via the
 
 ## Development
 
-Run the dependency-free unit tests (68 tests: analytics logic, password hashing,
+Run the dependency-free unit tests (77 tests: analytics logic, password hashing,
 XSS escaping, input validation, the lockout state machine, import sanitization,
-session expiry, asset fingerprinting):
+session expiry, asset fingerprinting, the cache-policy contract, and the
+module-identity invariants that keep every import fingerprinted):
 
 ```bash
 npm test          # or: node --test "tests/*.test.js"
@@ -216,11 +217,13 @@ totals are always recomputed from the validated lines so tampered envelopes
 cannot inflate revenue.
 
 All of this logic is pure and covered by `tests/security.test.js` and
-`tests/import-session.test.js` (68 tests total). For hands-on verification,
+`tests/import-session.test.js`, within the 77-test suite that runs in CI.
+For hands-on verification,
 **[SECURITY-TESTING.md](SECURITY-TESTING.md)** provides a 23-point checklist
 with concrete attack payloads (stored XSS, CSP bypass, brute force, lockout,
 privilege escalation, malicious imports, session attacks) and expected
-outcomes.
+outcomes. Executed results against the live deployment are recorded in
+**[SECURITY-EVIDENCE.md](SECURITY-EVIDENCE.md)**.
 
 Still true regardless: **do not use for real commerce without a backend** —
 server-side auth (bcrypt/argon2), server-enforced authorization, real payment

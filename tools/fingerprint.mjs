@@ -35,7 +35,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // a SECOND instance of a shared-mutable-state singleton alongside any bare
 // import of the same file (tests, console access via window.app). Pure
 // modules double-instantiate harmlessly; state.js does not.
-const UNFINGERPRINTED = new Set(["js/modules/state.js"]);
+// .htaccess MUST serve these with no-cache — guarded by tests/cache-policy.test.js.
+export const UNFINGERPRINTED = new Set(["js/modules/state.js"]);
 
 // ---------- helpers ----------
 
