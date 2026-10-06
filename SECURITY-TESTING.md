@@ -13,6 +13,11 @@ validation, lockout, session handling. A real attacker who can edit their
 architectural property of no-backend apps, not a failure of these controls
 (see the README's Security Model).
 
+Section 8 goes the other way on purpose: **Practice Mode** (`?lab=1`) turns a
+few of those defenses off in one flag so the risk classes — stored/DOM/
+reflected XSS and SQL injection — can be demonstrated and then shown fixed.
+It is off on every normal URL; nothing in sections 1–7 changes.
+
 **How to run:** serve the app (`npx http-server -p 8080`), open DevTools
 (F12) with the Console visible, and work through the tests in order. Some
 tests mutate data — restore steps are included, and Test ST-10 wipes
@@ -72,12 +77,13 @@ Toasts were a real sink (fixed); this proves the fix.
 
 **Steps (Console, on any page):**
 ```js
-showToast('<img src=x onerror="alert(\'XSS-TOAST\')">');
+app.showToast('<img src=x onerror="alert(\'XSS-TOAST\')">', 'warning', 20000);
 ```
 
 **Expected:** ✅ The toast displays the payload as text. Inspect it:
 `document.querySelector('.toast span').innerHTML` starts with
-`&lt;img` — escaped at the sink.
+`&lt;img` — escaped at the sink. (`showToast` is exposed on `window.app` so
+this test does not depend on guessing a module path.)
 
 ### ST-04 — CSP blocks an injected script tag even if escaping is bypassed
 
@@ -363,7 +369,9 @@ curl -sI https://YOUR-SITE.infinityfree.me/ | grep -iE "content-security|x-frame
 ```
 
 **Expected:** ✅ `Content-Security-Policy` (script-src 'self', no
-unsafe-inline), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options:
+unsafe-inline; connect-src 'self' plus `https://*.supabase.co` /
+`wss://*.supabase.co` for the optional Supabase backend — data only, no
+cross-origin code execution), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options:
 nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
 `Permissions-Policy` (camera/mic/geolocation/payment/usb denied),
 `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy`. Note:
@@ -392,10 +400,26 @@ strips headers.
 
 **Steps:** DevTools → Network tab → reload the site → filter by domain.
 
-**Expected:** ✅ Every request goes to your own domain. The icon library
-is vendored (`assets/vendor/lucide.min.js`); there is no CDN, no
-analytics, no third-party script of any kind — nothing outside your
-origin can run on the page.
+**Expected:** ✅ Every request goes to your own domain. Both vendored
+libraries — the icon set (`assets/vendor/lucide.min.js`) and the
+Supabase client (`assets/vendor/supabase.min.js`) — are served from it;
+there is no CDN, no analytics, no third-party script of any kind —
+nothing outside your origin can run on the page (`script-src 'self'`
+never moved). The single off-origin CSP entry, `connect-src` →
+`*.supabase.co`, is data-only and stays dormant while the
+`supabase-url` / `supabase-anon-key` metas in `index.html` are empty, so
+with the shipped defaults the Network tab still shows zero off-origin
+requests. `app.db.status()` in the console reports
+`{ configured: false, connected: false }` for the same reason.
+
+### Tool-assisted pass (ZAP / Burp)
+
+ST-20…ST-23 can also be evidenced with OWASP ZAP and Burp Suite Community
+against the deployed URL. **[ZAP-BURP-WALKTHROUGH.md](ZAP-BURP-WALKTHROUGH.md)**
+is the step-by-step runbook: expected alerts (the one real finding is the
+missing HSTS header), the InfinityFree `?i=1` JS-challenge that stops
+non-JS scanners, project-specific false-positive traps, and what becomes
+scannable after a backend is added.
 
 ---
 
@@ -403,7 +427,7 @@ origin can run on the page.
 
 The payloads above that test *pure logic* (lockout math, validators,
 image-path guard, import sanitization, session expiry, escaping) are also
-unit tests — 77 of them run in CI before every deploy:
+unit tests — 101 of them run in CI before every deploy:
 
 ```bash
 npm test        # node --test — auto-discovers every tests/*.test.js file
@@ -413,6 +437,172 @@ npm test        # node --test — auto-discovers every tests/*.test.js file
 `tests/import-session.test.js` (import sanitizers, session math) are the
 security-relevant suites. If you change any `js/utils/security.js`
 behavior, extend these tests alongside the checklist entry.
+
+`tests/lab-mode.test.js` pins the other direction: that Practice Mode is off
+without the flag, that `labUnsafeText()` is exactly `escapeHtml()` when it is
+off, that the bypass has one implementation and two call sites, and that each
+bundled payload still parses as the injection it claims to be.
+
+`tests/tag-balance.test.js` guards the markup itself: every template literal
+in `js/` and both static pages must balance their tags — the mechanical check
+that would have caught the missing `</section>` in `renderHero()` before it
+shipped — and it self-tests with known-bad fragments so the checker itself
+can never go silently vacuous.
+
+---
+
+## 8. Practice Mode — demonstrating the risks (?lab=1)
+
+Everything above tests a **defense**. This section does the opposite: it turns
+a handful of defenses off *on purpose*, one flag at a time, so the class can
+watch an attack succeed and then see the fix.
+
+> **How it is gated.** Practice Mode is **off unless the URL contains
+> `?lab=1`.** On the normal URL there is no banner, no SQL console, and every
+> sink still escapes — verified by `tests/lab-mode.test.js` and by ST-25
+> below. The flag is read once at boot by `js/utils/lab.js`.
+>
+> **Never ship this on with real data.** The whole point of the mode is that
+> these code paths are known-bad. A red banner names the mode on screen while
+> it is on.
+
+The gate has exactly one implementation and three call sites — this is the
+complete inventory of deliberate flaws:
+
+| # | Sink | Vulnerable behavior | Normal build |
+| --- | --- | --- | --- |
+| 1 | `renderProductCard()` — `item.name` | product name rendered raw | `escapeHtml()` |
+| 2 | `createToastElement()` — `message` | toast message rendered raw | `escapeHtml()` |
+| 3 | `renderShop()` — search empty state | query echoed raw | `escapeHtml()` |
+| 4 | `runQuery()` — SQL console | value concatenated into SQL | parameterised `?` |
+
+Sinks 1–3 are reached through one shared helper, `labUnsafeText()`, so
+`grep -rn labUnsafeText js/` is the whole attack surface. Sink 4 is a separate
+*simulated* SQL engine (`js/modules/lab-sql.js`).
+
+### ST-24 — Stored XSS in Practice Mode (payload lands in the DOM)
+
+**Steps:**
+1. Open `index.html?lab=1` — confirm the red **Practice Mode — deliberate
+   flaws ON** banner at the bottom-left.
+2. Log in as admin (`admin@ias2.test` / `admin123`).
+3. Admin → Items → Edit **Aura Desk Lamp** and set the name to:
+   ```html
+   <img src=x onerror="alert('XSS-STORED')">
+   ```
+4. Save, then go to the shop.
+
+**Expected:** ⚠️ **The defense does not hold — that is the point.** The
+product card now contains a real `<img>` element:
+`document.querySelector('.product-card h3 img')` is **not** `null`, and the
+`<h3>`'s `innerHTML` starts with `<img src=` instead of `&lt;img src=`.
+
+**Then note the honest caveat:** the Console shows
+`Refused to execute inline event handler … "script-src 'self'"` — the
+**`alert()` does not fire**, because the CSP in `index.html` still blocks
+inline handlers (ST-04). This is the real lesson of the exercise: *escaping is
+what makes the payload inert HTML; CSP is the second lock on the door.* To
+show visible, purely-HTML impact with no JavaScript at all, use
+`<b>owned</b>` or `<img src=x>` as the name — it renders, it breaks the layout,
+and it needs no script execution.
+
+**Restore:** edit the item back to `Aura Desk Lamp`, and leave `?lab=1` before
+re-running ST-01.
+
+### ST-25 — Practice Mode does not leak into the normal build
+
+**Steps:** load plain `index.html` (no query string) and repeat ST-24's
+payload.
+
+**Expected:** ✅ The payload renders as literal text, no `<img>` is created,
+`document.querySelector('#labBanner')` is `null`,
+`app.lab.isEnabled()` is `false`, `app.lab.isRequested()` is `false`, and
+`app.lab.openConsole()` refuses with a toast instead of opening anything.
+This is the test that proves the mode is a demo harness and not a regression.
+
+### ST-26 — DOM XSS through the toast, in Practice Mode
+
+**Steps (Console, on `?lab=1`):**
+```js
+app.showToast('<b>INJECTED-TOAST</b>', 'warning', 20000);
+```
+
+**Expected:** ⚠️ `document.querySelector('.toast span b')` is **not** `null` —
+the payload became a live element. With the flag off, the same call renders
+`&lt;b&gt;` as text (ST-03).
+
+### ST-27 — Reflected XSS through the search box, in Practice Mode
+
+**Steps:** on `?lab=1`, type this into the search box (use a query that
+matches nothing so the empty state renders):
+```
+<b>INJECTED-SEARCH</b><img src=x onerror="alert('XSS-REFLECTED')">
+```
+
+**Expected:** ⚠️ `document.querySelector('.empty-state p b')` is **not** `null`
+and the `<p>`'s `innerHTML` contains `<b>`. No new `<script>` element is added
+(the payload only injects markup — see ST-02/ST-04). Toggle Practice Mode off
+from the banner and re-type: the same text renders escaped again.
+
+### ST-28 — SQL injection in the simulated console
+
+Open `?lab=1`, press **SQL console** in the banner, and log in as admin first
+(the `users` table is admin-only, matching ST-10).
+
+> This app has **no database** — state is in localStorage. The console is a
+> **simulator**: it builds the real SQL string by concatenation and replays the
+> effect each payload shape would have. It never executes SQL and never changes
+> your data.
+
+**Step 1 — the tautology (`Bypass the filter`):**
+```js
+' OR '1'='1
+```
+**Expected:** ⚠️ The statement shown on screen is
+```sql
+SELECT id, name, category, price, stock, active FROM items WHERE name = '' OR '1'='1';
+```
+— the payload closed the string literal. The result header reads
+`items · 12 rows (leaked)` instead of one row. **This is how an auth check
+`WHERE password = '<input>'` is bypassed.**
+
+**Step 2 — cross-table exfiltration (`Steal another table`):**
+```js
+' UNION SELECT id, name, email, role, password FROM users --
+```
+**Expected:** ⚠️ A second table appears: `users · 2 rows (appended by UNION)`,
+including the `password` column — a salted SHA-256 hash
+(`sha256:<salt>:<hash>`) for accounts that have logged in at least once, or the
+legacy seed value for accounts that have not. One extra result set is all an
+attacker needs to read a table the UI never offers them.
+
+**Step 3 — stacked statement (`Stack a DROP`):**
+```js
+'; DROP TABLE items; --
+```
+**Expected:** ⚠️ The console reports
+`Stacked statement detected: DROP (simulated)` and returns no rows. **Your data
+is untouched** — the simulator reports destructive payloads rather than running
+them. Re-open Admin → Items to confirm all 12 products are still there. (On a
+real server this is where a table disappears.)
+
+**Step 4 — time-based blind injection (`Time-based blind`):**
+```js
+' OR SLEEP(5) --
+```
+**Expected:** ⚠️ Detected and explained: the response delay would be the data
+channel. No delay is simulated — the page never blocks. The other three
+payloads leak data *visibly*; this one is what a blind attacker would use when
+the UI shows nothing.
+
+**Step 5 — the fix, on the same payload:** press **Run parameterised instead**.
+**Expected:** ✅ The statement becomes
+`SELECT … FROM items WHERE name = ?` with no payload in it, and the result is
+`items · 0 rows`. The payload was bound as *data*, so it is compared literally
+and matches nothing. That is the whole remedy — prepared statements, not
+input filtering.
+
+**Restore:** close the console; no restore step needed (nothing is mutated).
 
 ---
 
@@ -446,3 +636,14 @@ For each test in your documentation:
   for a static app (and would be server-side in production).
 - **Payments are simulated** — no real card data is processed; payment
   fields are demo placeholders.
+- **Practice Mode is a client-side flag** — `?lab=1` unlocks the deliberate
+  flaws for anyone who knows about it, so it is a *demonstration* switch, not
+  a security boundary. On a hosted copy it is available to any visitor who
+  types the query string; the reason it is acceptable here is that the
+  "database" is each visitor's own localStorage, so the worst a lab visitor
+  can break is their own copy. A real deployment must remove the code path
+  entirely (or gate it server-side) rather than rely on obscurity.
+- **The SQL console is simulated, not a real engine** — it classifies payload
+  shapes and replays their documented effect. It is faithful about *which*
+  payloads break out of the literal and what a real server would return; it is
+  not a SQL parser, and no injection is ever executed.

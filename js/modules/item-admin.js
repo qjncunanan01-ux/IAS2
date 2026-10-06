@@ -2,10 +2,10 @@ import { state } from "./state.js";
 import { save } from "../utils/storage.js?v=ff51bd7c";
 import { createId, escapeHtml, escapeAttribute } from "../utils/helpers.js?v=7bbd16f9";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
-import { showToast, showError, showSuccess } from "../components/toast.js?v=083997a1";
+import { showToast, showError, showSuccess } from "../components/toast.js?v=ce0cbc8e";
 import { closeEntity } from "./modals.js?v=266d3e8d";
 import { isAdmin } from "./auth.js?v=aec43a94";
-import { render } from "./ui.js?v=a2fcb8e6";
+import { render } from "./ui.js?v=f811eaeb";
 import { sanitizeText, sanitizeMultiline, validateName, validateMoney, validateQuantity, validateImagePath } from "../utils/security.js?v=fbf2cc5d";
 
 let els = {};

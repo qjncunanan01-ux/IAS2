@@ -179,8 +179,11 @@ the very first visit redirects through InfinityFree's `?i=1` JS challenge
    violation is a regression.
 
 5. **No third-party code** (ST-23): Network tab filtered by domain shows
-   only `ias2.infinityfree.me` — icons come from vendored
-   `assets/vendor/lucide.min.js`, never a CDN.
+   only `ias2.infinityfree.me` — icons and the Supabase client come from
+   vendored `assets/vendor/*.js`, never a CDN. (`connect-src` also
+   permits `*.supabase.co` for the optional backend, but with the
+   `supabase-url`/`supabase-anon-key` metas empty no such request is
+   ever made.)
 
 ## 5. Troubleshooting
 

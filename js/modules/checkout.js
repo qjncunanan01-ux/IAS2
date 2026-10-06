@@ -3,17 +3,30 @@ import { save } from "../utils/storage.js?v=ff51bd7c";
 import { createId, escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js?v=7bbd16f9";
 import { sanitizeText, sanitizeMultiline } from "../utils/security.js?v=fbf2cc5d";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
-import { showToast, showError, showSuccess } from "../components/toast.js?v=083997a1";
-import { getCartLines, renderCart } from "./cart.js?v=b2fca542";
+import { showToast, showError, showSuccess } from "../components/toast.js?v=ce0cbc8e";
+import { getCartLines, renderCart } from "./cart.js?v=ca844d25";
 import { getCurrentUser, openAuth } from "./auth.js?v=aec43a94";
-import { closeCart } from "./cart.js?v=b2fca542";
-import { render } from "./ui.js?v=a2fcb8e6";
+import { closeCart } from "./cart.js?v=ca844d25";
+import { render } from "./ui.js?v=f811eaeb";
 import { closeAuth } from "./auth.js?v=aec43a94";
 
 let els = {};
 
+// Cash on Delivery is the one method with no payment reference to check —
+// the reference field's native `required` flag tracks this value.
+const COD_METHOD = "Cash on Delivery";
+
 export function initCheckout(elements) {
   els = elements;
+
+  const methodSelect = els.checkoutForm?.querySelector("#paymentMethod");
+  const referenceInput = els.checkoutForm?.querySelector("#paymentReference");
+  const syncReferenceRequirement = () => {
+    // Fail closed: if the select is ever missing, the requirement stays on.
+    referenceInput?.toggleAttribute("required", methodSelect?.value !== COD_METHOD);
+  };
+  methodSelect?.addEventListener("change", syncReferenceRequirement);
+  syncReferenceRequirement();
 }
 
 export function openCheckout() {
@@ -82,13 +95,25 @@ export function placeCheckoutOrder(form) {
     return;
   }
 
+  const paymentMethod = String(data.get("method"));
+  const paymentReference = sanitizeText(data.get("reference"), 40);
+
+  // Defense in depth: the browser's native `required` already blocks an
+  // empty reference for Card/GCash, and COD releases it on the field. This
+  // mirrors the rule in app logic so a markup change or programmatic submit
+  // can't bypass it — same pattern as the deactivated-item check above.
+  if (paymentMethod !== COD_METHOD && !paymentReference) {
+    showError("Add the payment reference, or choose Cash on Delivery.");
+    return;
+  }
+
   const order = {
     id: createId("order"),
     userId: currentUser.id,
     customerName,
     address,
-    paymentMethod: String(data.get("method")),
-    paymentReference: sanitizeText(data.get("reference"), 40),
+    paymentMethod,
+    paymentReference,
     status: "Paid",
     createdAt: new Date().toISOString(),
     items: lines.map(({ item, qty }) => ({

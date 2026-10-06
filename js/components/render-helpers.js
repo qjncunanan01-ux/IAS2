@@ -1,4 +1,5 @@
 import { escapeHtml, escapeAttribute, formatMoney, formatDate, statusClass, refreshIcons } from "../utils/helpers.js?v=7bbd16f9";
+import { labUnsafeText, isLabEnabled } from "../utils/lab.js?v=8d55df8c";
 import { state } from "../modules/state.js";
 
 // Stable hue per category name: same name -> same color, everywhere.
@@ -16,12 +17,15 @@ export function renderCategoryChip(category) {
   return `<span class="chip hue-${hue}" data-hue="${hue}">${escapeHtml(category)}</span>`;
 }
 
-export function renderEmptyState(title, copy, actionHtml) {
+// `raw` is the practice-mode reflected-XSS path: the caller must opt in AND
+// practice mode must be on, so the default build still escapes everything.
+export function renderEmptyState(title, copy, actionHtml, raw = false) {
+  const body = raw && isLabEnabled() ? String(copy ?? "") : escapeHtml(copy);
   return `
     <div class="empty-state">
       <div>
         <h2>${escapeHtml(title)}</h2>
-        <p>${escapeHtml(copy)}</p>
+        <p>${body}</p>
         ${actionHtml || ""}
       </div>
     </div>
@@ -53,7 +57,7 @@ export function renderProductCard(item) {
       </figure>
       <div class="product-info">
         <div class="product-title">
-          <h3>${escapeHtml(item.name)}</h3>
+          <h3>${labUnsafeText(item.name)}</h3>
           <strong class="price">${formatMoney(item.price)}</strong>
         </div>
         <div class="tag-row">

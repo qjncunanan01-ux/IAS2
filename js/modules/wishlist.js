@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { save } from "../utils/storage.js?v=ff51bd7c";
-import { showToast, showSuccess } from "../components/toast.js?v=083997a1";
-import { render } from "./ui.js?v=a2fcb8e6";
+import { showToast, showSuccess } from "../components/toast.js?v=ce0cbc8e";
+import { render } from "./ui.js?v=f811eaeb";
 import { refreshQuickView } from "./quick-view.js?v=5f184dd6";
 
 export function getWishlistLines() {

@@ -2,9 +2,9 @@ import { state } from "./state.js";
 import { escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js?v=7bbd16f9";
 import { refreshIcons, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
 import { closeEntity } from "./modals.js?v=266d3e8d";
-import { addToCart } from "./cart.js?v=b2fca542";
+import { addToCart } from "./cart.js?v=ca844d25";
 import { relatedItems } from "./stats.js?v=90d87ad1";
-import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js?v=ec7654a4";
+import { renderStockChip, renderCategoryChip } from "../components/render-helpers.js?v=7433b691";
 
 let els = {};
 

@@ -4,12 +4,20 @@ A modular, feature-rich static e-commerce demo with customer and admin flows. Bu
 
 ## Quick Start
 
-Serve the folder over HTTP (ES modules don't load from `file://`):
+Secrets are delivered by [Infisical](https://infisical.com) at runtime, so no
+`.env` file is needed (or wanted) on disk. Install and log in to the CLI once
+per machine, then start the app through the wrapper:
 
 ```bash
-npx http-server -p 8080
+infisical login            # use `infisical login -i` on headless/SSH hosts
+npm start                  # infisical run --env=dev -- npx http-server -p 8080
 # then open http://localhost:8080
 ```
+
+`npm start` wraps the static server in `infisical run`; to bypass Infisical
+(e.g. when offline), run `npx http-server -p 8080` directly. The app itself is
+fully client-side and reads no environment variables — the wrapper exists so
+any runtime secret added later is injected centrally instead of living on disk.
 
 ## Demo Accounts
 
@@ -25,7 +33,7 @@ npx http-server -p 8080
 - **Shopping Cart**: Add/remove items, quantity controls, persistent across sessions
 - **Wishlist**: Save items for later with heart icons
 - **Quick View**: Modal product preview without leaving the shop
-- **Checkout**: Multi-step with address, payment method (Card/GCash/COD), reference
+- **Checkout**: Multi-step with address, payment method (Card/GCash/COD), reference (required for Card/GCash, optional for Cash on Delivery)
 - **Order History**: View past orders with status tracking
 - **Dark Mode**: Toggle with persistence, respects system preference
 
@@ -81,6 +89,9 @@ npx http-server -p 8080
 │   │   ├── quick-view.js
 │   │   ├── lightbox.js       # Full-size gallery: swipe, thumbs, zoom
 │   │   ├── data-tools.js     # Export/import/clear with validation
+│   │   ├── lab-panel.js      # Practice Mode banner + SQL console (?lab=1)
+│   │   ├── lab-sql.js        # Simulated injectable SQL engine (lab only)
+│   │   ├── db.js             # Supabase scaffold — lazy, fail-closed client
 │   │   ├── keyboard.js       # Shortcuts + help overlay
 │   │   └── modals.js
 │   ├── components/       # Reusable UI components
@@ -90,9 +101,11 @@ npx http-server -p 8080
 │       ├── storage.js    # localStorage abstraction (quota/corruption safe)
 │       ├── password.js   # SHA-256 password hashing
 │       ├── security.js   # Sanitizers, validators, image-path guard, lockout
+│       ├── lab.js        # Practice Mode gate (?lab=1) — the one bypass
 │       └── helpers.js    # Formatting, escaping, debounce, etc.
 ├── tests/                # Unit tests (node --test, no dependencies)
-└── assets/               # Product photos
+├── supabase/             # schema.sql — Postgres schema + RLS (migration scaffold)
+└── assets/               # Product photos + vendored libs (assets/vendor/)
 ```
 
 ## Architecture Notes
@@ -102,6 +115,7 @@ npx http-server -p 8080
 - **Event Delegation**: Single click/submit/change listeners on `document.body` with a `[data-action]` map
 - **No Framework**: Pure vanilla JS
 - **Persistence**: `localStorage` under the `ias2.commerce.` prefix; every write is quota-guarded and every read falls back to defaults on corruption (with a toast)
+- **Supabase scaffold (optional)**: vendored client (`assets/vendor/supabase.min.js`) + `supabase/schema.sql` (items/users/orders with RLS) + `js/modules/db.js`. Until the `supabase-url`/`supabase-anon-key` metas are filled, `getDb()` returns `null` and localStorage stays the source of truth — `app.db.status()` in the console shows why. The anon key is public by design; RLS is the guard.
 - **Passwords**: salted SHA-256 (`sha256:<salt>:<hash>`); legacy plaintext demo seeds upgrade transparently on first login
 - **Exports**: versioned JSON envelope (`version`, `exportedAt`); imports are validated before anything is written
 
@@ -180,7 +194,8 @@ HTTPS redirect, and denied access to source maps and docs.
 toast messages (an unescaped one was a real stored-XSS sink — fixed). Item
 image paths are validated server-grade: relative only, no URLs, no `..`
 traversal, image extensions only — so admin-stored paths can never become
-script vectors or load remote trackers.
+script vectors or load remote trackers. (The one deliberate exception is
+Practice Mode above, off unless the URL asks for it.)
 
 **Input validation** — every persisted field (names, emails, prices, stock,
 quantities, addresses, categories) passes sanitization (control-character
@@ -217,13 +232,39 @@ totals are always recomputed from the validated lines so tampered envelopes
 cannot inflate revenue.
 
 All of this logic is pure and covered by `tests/security.test.js` and
-`tests/import-session.test.js`, within the 77-test suite that runs in CI.
+`tests/import-session.test.js`, within the 101-test suite that runs in CI.
 For hands-on verification,
-**[SECURITY-TESTING.md](SECURITY-TESTING.md)** provides a 23-point checklist
+**[SECURITY-TESTING.md](SECURITY-TESTING.md)** provides a 28-point checklist
 with concrete attack payloads (stored XSS, CSP bypass, brute force, lockout,
 privilege escalation, malicious imports, session attacks) and expected
 outcomes. Executed results against the live deployment are recorded in
-**[SECURITY-EVIDENCE.md](SECURITY-EVIDENCE.md)**.
+**[SECURITY-EVIDENCE.md](SECURITY-EVIDENCE.md)**. A step-by-step
+**[ZAP-BURP-WALKTHROUGH.md](ZAP-BURP-WALKTHROUGH.md)** covers running OWASP
+ZAP and Burp Suite Community against the deployed site — including what
+those scanners can and cannot prove for a client-only app.
+
+### Practice Mode (`?lab=1`) — demonstrating the risks
+
+A store with no visible attack surface makes a poor security demo, so this
+build ships a **flag-gated** set of deliberately weak code paths for showing
+the risk classes in class. Append `?lab=1` to the URL:
+
+- a red **Practice Mode** banner appears, with a toggle and a **SQL console**;
+- product names, toast messages and the search box stop escaping, so an
+  injected payload lands in the DOM as real markup;
+- the SQL console builds statements by string concatenation and shows a
+  tautology leaking the table, a `UNION SELECT` pulling in `users`, a
+  simulated `DROP`, and the same payload returning nothing under a
+  **parameterised** statement.
+
+**The normal URL is untouched.** Without `?lab=1` there is no banner, the
+console refuses to open, `labUnsafeText()` is exactly `escapeHtml()`, and the
+CSP still blocks inline handlers — `tests/lab-mode.test.js` asserts all of
+that. The bypass has a single implementation (`js/utils/lab.js`) and two call
+sites, so `grep -rn labUnsafeText js/` is the complete list of deliberate
+flaws. Section 8 of
+[SECURITY-TESTING.md](SECURITY-TESTING.md) walks through it; do not deploy
+this flag for real users or real data.
 
 Still true regardless: **do not use for real commerce without a backend** —
 server-side auth (bcrypt/argon2), server-enforced authorization, real payment

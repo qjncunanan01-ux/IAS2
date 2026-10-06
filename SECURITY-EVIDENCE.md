@@ -105,6 +105,12 @@ architectural property of no-backend apps, not a failure of these controls
 | Evidence | Toast text captured per call; state assertions after each call |
 | Verdict | ✅ Pass — UI hiding is backed by action-level guards |
 
+**Re-verified 2026-10-02 (live, current build):** re-run as the customer
+(`user@ias2.test`) against a fresh load of the deployed build
+(`main.js?v=a75d0069`, matching local HEAD). All four console-invoked
+operations returned **"Admin access required."** with zero state change
+(12 items, 2 users, 0 orders throughout). Console clean.
+
 ### ST-11 — Customer cannot view another user's order
 
 | Field | Content |
@@ -116,6 +122,22 @@ architectural property of no-backend apps, not a failure of these controls
 | Observed | **Foreign:** toast *"You can only view your own orders."*, modal stayed hidden (`.hidden` class present, `innerHTML` length 0). **Own:** modal opened with full detail (3.3 KB render), status `<select>` present and `disabled`, order id rendered; closed cleanly on `closeOrderDetail` |
 | Evidence | Per-step DOM/state readback after each call (modal class, innerHTML length, select state, toast text) |
 | Verdict | ✅ Pass — fail-closed for foreign orders, functional for owned ones |
+
+**Re-verified 2026-10-02 (live, current build):** foreign order refused
+with the warning toast, modal stayed hidden (innerHTML length 0); own
+order opened with the status select `disabled`; cleanup verified (orders
+back to 0, seed data intact).
+
+**Operational caveat found during this re-run:** a browser profile that
+had cached the **pre-fingerprint `index.html`** silently kept running the
+old, unguarded modules — there `deleteItem` and `deleteOrder` executed
+from a customer session with **no** admin check at all (observed directly
+before the cache-busted reload). The fixed app was fine; the stale cache
+was the risk. This is the concrete failure mode that content-hash
+fingerprinting plus `no-cache` HTML (this release) closes: stragglers
+holding HTML cached before 2026-09-27 run the old build until it expires,
+so a hard refresh (Ctrl+F5) is the fix for any user reporting "admin
+actions work".
 
 > **Note from this test (why it matters):** an earlier probe crashed here
 > because it imported `order-admin.js` **bare** (no `?v=` fingerprint) —
@@ -168,21 +190,31 @@ Verified against the production host during this evidence cycle:
   `Cross-Origin-Resource-Policy`. A `<meta>` CSP in `index.html` protects
   the page even where a host strips headers.
 - **HTTPS enforcement:** HTTP → 301 → HTTPS.
-- **No supply-chain code:** every request stays on the origin; the icon
-  library is vendored (`assets/vendor/lucide.min.js`). No CDN, no analytics,
-  no third-party scripts.
+- **No supply-chain code:** no third-party code can execute — both
+  vendored libraries (`assets/vendor/lucide.min.js`,
+  `assets/vendor/supabase.min.js`) are served from the origin and
+  `script-src 'self'` blocks every CDN. `connect-src` additionally
+  permits `https://*.supabase.co` / `wss://*.supabase.co` for the
+  optional Supabase backend (scaffold: `supabase/schema.sql` +
+  `js/modules/db.js`); while the `supabase-url`/`supabase-anon-key`
+  metas are empty the client never initialises and no off-origin
+  request is made — with the shipped defaults live traffic still never
+  leaves the origin. No analytics, no third-party scripts.
 
 ---
 
 ## 5. Automated regression layer
 
-All of the above has a CI backstop — **77 dependency-free unit tests** run
+All of the above has a CI backstop — **101 dependency-free unit tests** run
 on every push before the deploy job (`node --test` auto-discovers
 `tests/*.test.js`):
 
 - `tests/security.test.js` — validators, image-path guard, lockout math
 - `tests/import-session.test.js` — import sanitizers (fail-closed, totals
   recomputed), session-expiry math
+- `tests/lab-mode.test.js` — Practice Mode stays off without `?lab=1`, the
+  escaping bypass has one implementation / two call sites, and every bundled
+  payload still parses as an injection
 - `tests/password.test.js` — salted hashing / verification
 - `tests/fingerprint.test.js` — the fingerprint tool end-to-end
 - `tests/cache-policy.test.js` — `.htaccess` ↔ fingerprint cache contract
@@ -190,6 +222,16 @@ on every push before the deploy job (`node --test` auto-discovers
 - `tests/module-identity.test.js` — no bare app-module imports (the
   double-instance trap behind the ST-11 harness crash), HTML script refs
   fingerprinted
+- `tests/tag-balance.test.js` — every shipped HTML fragment (both static
+  pages and every template literal in `js/`, nested ones included) balances
+  its tags: the guard that would have caught the missing `</section>` in
+  `renderHero()` pre-deploy, plus a self-test so the checker stays non-vacuous
+- `tests/contrast.test.js` — the WCAG contrast fixes pinned as unit tests:
+  light/dark theme token pairs parsed straight out of `styles.css` must clear
+  4.5:1 (text) / 3:1 (focus), the dark cart-badge override rule must stay in
+  place, and the dual focus ring keeps both layers — any palette change that
+  drops a pair below its bar fails CI (mutation-proven: the pre-fix
+  `--muted` and the missing badge override both turn the suite red)
 - plus analytics/stats and helper suites
 
 The `fingerprint --check` step fails the build if any asset URL lacks its
@@ -197,9 +239,61 @@ current `?v=<hash>`.
 
 ---
 
+## 6. Practice Mode — verified locally, not deployed
+
+Practice Mode (`?lab=1`) deliberately disables four defenses so the risk
+classes can be demonstrated. It was executed against a **local dev server**
+(`node tools/dev-server.mjs`) and is **not part of the live deployment
+evidence above** — the flag stays off for every visitor of
+`ias2.infinityfree.me`, and ST-01…ST-04 were re-confirmed on the live host
+after the code was added.
+
+| Test | Target | Verdict |
+| --- | --- | --- |
+| ST-24 | Stored XSS in Practice Mode | ⚠️ Defense off (payload becomes a live element) |
+| ST-25 | Practice Mode absent from the normal build | ✅ Pass |
+| ST-26 | DOM XSS through the toast, Practice Mode | ⚠️ Defense off |
+| ST-27 | Reflected XSS through search, Practice Mode | ⚠️ Defense off |
+| ST-28 | SQL injection (tautology / UNION / stacked / blind) | ⚠️ Defense off |
+
+Observed, with the app served locally:
+
+- **ST-24** — with `?lab=1` and the product name set to
+  `<img src=x onerror="alert('XSS-STORED')">`, the card's `<h3>.innerHTML` was
+  the raw payload and `document.querySelector('.product-card h3 img')` was not
+  `null`. Console logged
+  `Refused to execute inline event handler … "script-src 'self'"` — the element
+  is injected, **the `alert()` does not fire**, because the CSP was left
+  intact. Visible-impact payloads (`<b>…`, `<img src=x>`) need no script
+  execution.
+- **ST-25** — on the plain URL the same stored payload rendered as literal
+  text, `#labBanner` was `null`, `app.lab.isEnabled()`/`isRequested()` were
+  `false`, and `app.lab.openConsole()` refused with a toast.
+- **ST-26** — `app.showToast('<b>INJECTED-TOAST</b>')` produced a live `<b>`
+  inside the toast; with the flag off the same call rendered `&lt;b&gt;`.
+- **ST-27** — searching `<b>INJECTED-SEARCH</b><img src=x onerror=…>` produced a
+  live `<b>` in `.empty-state p`; flipping the banner toggle off re-escaped it
+  on the next render.
+- **ST-28** — `' OR '1'='1` produced
+  `SELECT id, name, category, price, stock, active FROM items WHERE name = '' OR '1'='1';`
+  and `items · 12 rows (leaked)`. As admin,
+  `' UNION SELECT id, name, email, role, password FROM users --` appended
+  `users · 2 rows (appended by UNION)` including the salted SHA-256 hash;
+  as a customer the same payload was refused ("this session is not an admin").
+  `'; DROP TABLE items; --` reported `DROP (simulated)` and left all 12 items
+  intact. **Run parameterised instead** on the same tautology produced
+  `… WHERE name = ?` and `items · 0 rows`.
+
+Evidence for this section is a local run, not a production run; treat it as a
+reproduction guide rather than a penetration test.
+
+---
+
 ## Status
 
-All executed checks **pass**. Remaining checklist items (ST-05 lockout flow,
+All executed checks **pass** (section 6's Practice Mode entries are the
+deliberate exceptions — they record that a defense was turned *off* on
+purpose, locally). Remaining checklist items (ST-05 lockout flow,
 ST-08 timing oracle, ST-12–ST-15 validation/import matrix, ST-17–ST-19
 session, ST-21–ST-23 framing/transport/supply-chain) are documented in
 [SECURITY-TESTING.md](SECURITY-TESTING.md) for periodic re-runs; ST-20's

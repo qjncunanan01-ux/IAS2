@@ -1,11 +1,12 @@
 import { state } from "./state.js";
 import { escapeHtml, escapeAttribute, formatMoney, formatDate } from "../utils/helpers.js?v=7bbd16f9";
 import { refreshIcons, focusFirstFocusable, debounce } from "../utils/helpers.js?v=7bbd16f9";
-import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=083997a1";
-import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js?v=ec7654a4";
+import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=ce0cbc8e";
+import { renderEmptyState, renderLockedState, renderOrderCard, renderCategoryChip } from "../components/render-helpers.js?v=7433b691";
+import { isLabEnabled } from "../utils/lab.js?v=8d55df8c";
 import { getCurrentUser, isAdmin, ensureCurrentUserExists, touchSession } from "./auth.js?v=aec43a94";
 import { openAuth, closeAuth, login, register, logout } from "./auth.js?v=aec43a94";
-import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js?v=b2fca542";
+import { openCart, closeCart, renderCart, addToCart, changeCartQty, removeFromCart } from "./cart.js?v=ca844d25";
 import { applyTheme, toggleTheme } from "./theme.js?v=2364f364";
 import { openItemForm, saveItem, deleteItem } from "./item-admin.js?v=8c4a97f2";
 import { openUserForm, saveUser, deleteUser } from "./user-admin.js?v=c2d262b4";
@@ -16,15 +17,15 @@ import {
   openOrderDetail,
   closeOrderDetail,
   updateOrderStatus
-} from "./order-admin.js?v=4d38044b";
-import { openCheckout, closeCheckout, placeCheckoutOrder } from "./checkout.js?v=08d34311";
+} from "./order-admin.js?v=78d320da";
+import { openCheckout, closeCheckout, placeCheckoutOrder } from "./checkout.js?v=70b4337b";
 import { closeEntity } from "./modals.js?v=266d3e8d";
 import { openQuickView, closeQuickView } from "./quick-view.js?v=5f184dd6";
 import { openLightbox, closeLightbox, navLightbox, jumpLightbox } from "./lightbox.js?v=990c66ab";
 import { toggleWishlist, isInWishlist } from "./wishlist.js?v=1de54067";
 import { openDataTools, closeDataTools, handleExport, handleImport, handleClearAll } from "./data-tools.js?v=b037983e";
 import { createCategory, renameCategory, deleteCategory, submitRenameCategory } from "./category-tools.js?v=3f04d531";
-import { renderProductCard, renderStockChip } from "../components/render-helpers.js?v=ec7654a4";
+import { renderProductCard, renderStockChip } from "../components/render-helpers.js?v=7433b691";
 import { sortLabels } from "./state.js";
 import { salesByCategory, topSellingItems, restockSuggestions, lowStockItems } from "./stats.js?v=90d87ad1";
 
@@ -62,7 +63,27 @@ function updateSearchClear() {
   }
 }
 
+// Mobile account menu: one toggle button in the topbar opens a panel holding
+// the badge and the Login/Logout button (see .account-menu in styles.css).
+// On wide screens the wrapper is display:contents, so closing here is a no-op.
+function setAccountMenuOpen(open) {
+  els.accountMenu?.classList.toggle("is-open", open);
+  els.accountMenuToggle?.setAttribute("aria-expanded", String(open));
+}
+
+function closeAccountMenu() {
+  if (els.accountMenu?.classList.contains("is-open")) {
+    setAccountMenuOpen(false);
+  }
+}
+
 function handleClick(event) {
+  // Any click outside the account menu dismisses it — checked before the early
+  // returns below so nav switches and modal-backdrop clicks close it too.
+  if (!event.target.closest?.(".topbar-account")) {
+    closeAccountMenu();
+  }
+
   // Click on a modal's dimmed backdrop (not its panel) dismisses that modal.
   // Static-content modals (auth/checkout) are only hidden; dynamic layers are
   // also cleared so they never hold stale content for their next open.
@@ -129,6 +150,8 @@ function handleClick(event) {
     },
     "close-quick-view": closeQuickView,
     "toggle-theme": toggleTheme,
+    "toggle-account-menu": () =>
+      setAccountMenuOpen(!els.accountMenu?.classList.contains("is-open")),
     "update-order-status": () => updateOrderStatus(id, actionTarget.value),
     "quick-view": () => openQuickView(id),
     "open-lightbox": () => openLightbox(id),
@@ -292,6 +315,39 @@ function renderNavigation() {
       els.userBadge.classList.add("hidden");
     }
   }
+
+  // The mobile account menu only exists for a signed-in user. Logging out
+  // collapses it so a stale .is-open can never reappear on the next login,
+  // and the trigger's accessible name carries the signed-in identity.
+  if (els.topbarAccount) {
+    const authenticated = Boolean(currentUser);
+    els.topbarAccount.classList.toggle("is-authenticated", authenticated);
+    if (!authenticated) {
+      closeAccountMenu();
+    }
+    els.accountMenuToggle?.setAttribute(
+      "aria-label",
+      authenticated ? `Account menu — ${currentUser.name}` : "Account menu"
+    );
+
+    // The trigger shows the user's initials (first letter of the first two
+    // words) instead of the generic icon. No computable initials — e.g. an
+    // empty name — leaves .has-initials off, so the icon stays visible;
+    // textContent means no escaping concern either way.
+    if (els.accountMenuToggle && els.accountMenuInitials) {
+      const initials = authenticated
+        ? currentUser.name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((word) => Array.from(word)[0] || "")
+            .join("")
+            .toUpperCase()
+        : "";
+      els.accountMenuInitials.textContent = initials;
+      els.accountMenuToggle.classList.toggle("has-initials", initials !== "");
+    }
+  }
 }
 
 function renderCategoryFilter() {
@@ -372,7 +428,9 @@ function renderShop() {
             : "Try a different search or category.",
           state.search
             ? `<button class="secondary-button" type="button" data-action="clear-search"><i data-lucide="eraser"></i>Clear search</button>`
-            : ""
+            : "",
+          // Reflected-XSS practice sink: inert unless ?lab=1 is in the URL.
+          isLabEnabled()
         )
     }
   `;
@@ -776,5 +834,6 @@ function renderHero(item) {
       <figure class="hero-media">
         <img src="${escapeAttribute(item.image || "assets/placeholder.svg")}" alt="${escapeAttribute(item.name)}" />
       </figure>
+    </section>
   `;
 }

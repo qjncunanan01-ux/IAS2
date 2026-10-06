@@ -5,15 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IAS2 Commerce</title>
     <!-- Locks down everything to same-origin: no inline script, no inline
-         styles, no remote code. The mirror-image HTTP headers live in .htaccess. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
-    <link rel="stylesheet" href="styles.css?v=3074a736" />
+         styles, no remote code. The mirror-image HTTP headers live in .htaccess.
+         connect-src also allows *.supabase.co (HTTPS + realtime WebSocket) for
+         the optional Supabase backend — data only, no third-party code can run
+         (script-src stays 'self', which is why the client is vendored below). -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <!-- Supabase scaffold (optional): fill these in when the project exists and
+         the app switches to the hosted backend — leave empty to stay on
+         localStorage, the client then never initialises (js/modules/db.js is
+         fail-closed). The anon key is PUBLIC by design: row access is enforced
+         by the RLS policies in supabase/schema.sql, not by hiding the key. -->
+    <meta name="supabase-url" content="" />
+    <meta name="supabase-anon-key" content="" />
+    <link rel="stylesheet" href="styles.css?v=29038539" />
     <link rel="icon" href="assets/placeholder.svg?v=cd1b9ef6" type="image/svg+xml" />
     <meta name="description" content="IAS2 Commerce — a demo store with a customer shop, cart, wishlist, checkout, and a full admin dashboard." />
     <meta name="theme-color" content="#14b8a6" />
     <script defer src="assets/vendor/lucide.min.js?v=2b531c43"></script>
+    <!-- supabase-js vendored (not a CDN) so script-src 'self' keeps holding.
+         UMD build sets window.supabase; js/modules/db.js only reads it lazily. -->
+    <script defer src="assets/vendor/supabase.min.js?v=20afa08c"></script>
     <script type="module" src="js/modules/lightbox.js?v=990c66ab"></script>
-    <script type="module" src="js/main.js?v=a75d0069"></script>
+    <script type="module" src="js/main.js?v=167332fc"></script>
   </head>
   <body>
     <a class="skip-link" href="#viewRoot">Skip to products</a>
@@ -55,10 +68,30 @@
           <button class="nav-button icon-button" type="button" data-action="toggle-theme" aria-label="Toggle dark mode" id="themeToggle">
             <i data-lucide="sun"></i>
           </button>
-          <span class="user-badge hidden" id="userBadge"></span>        <button class="primary-button" type="button" id="authButton" data-action="open-auth" data-mode="login">
-          Login
-        </button>
-      </nav>
+        </nav>
+
+        <div class="topbar-account" id="topbarAccount">
+          <!-- Mobile account menu: on narrow screens a signed-in user gets one
+               trigger here (their initials in a round chip — ui.js swaps it in
+               via .has-initials, the generic icon is the fallback), and the
+               badge + Login/Logout move into the panel it opens. Wide screens
+               keep both children inline (.account-menu is display:contents),
+               so nothing changes there. -->
+          <button class="icon-button account-menu-toggle" type="button" id="accountMenuToggle"
+                  data-action="toggle-account-menu" aria-controls="accountMenu"
+                  aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+            <i data-lucide="circle-user-round"></i>
+            <!-- aria-hidden: the button's aria-label ("Account menu — <name>")
+                 is and stays the accessible name; this is decoration. -->
+            <span class="account-menu-initials" id="accountMenuInitials" aria-hidden="true"></span>
+          </button>
+          <div class="account-menu" id="accountMenu" role="group" aria-label="Account menu">
+            <span class="user-badge hidden" id="userBadge"></span>
+            <button class="primary-button" type="button" id="authButton" data-action="open-auth" data-mode="login">
+              Login
+            </button>
+          </div>
+        </div>
       </header>
 
       <main class="content-shell">
@@ -94,7 +127,10 @@
       </main>
     </div>
 
-    <aside class="cart-drawer hidden" id="cartDrawer" aria-label="Shopping cart">
+    <!-- The drawer is modal (it has a scrim), so it is announced as a
+         dialog: screen readers constrain their virtual cursor to it and the
+         overlay-a11y layer makes the background inert while it is open. -->
+    <aside class="cart-drawer hidden" id="cartDrawer" role="dialog" aria-modal="true" aria-label="Shopping cart">
       <div class="drawer-panel">
         <div class="drawer-header">
           <div>
@@ -182,7 +218,17 @@
     <div class="modal-layer hidden" id="entityModal"></div>
     <div class="modal-layer hidden" id="quickViewModal"></div>
     <div class="modal-layer hidden" id="dataToolsModal"></div>
+    <!-- Practice Mode only (?lab=1): filled in by js/modules/lab-panel.js. -->
+    <div class="modal-layer hidden" id="labConsole"></div>
     <div class="modal-layer lightbox-layer hidden" id="lightboxModal"></div>
-    <div class="toast-area" id="toastArea" aria-live="polite"></div>
+    <!-- Toasts announce on insertion (each toast is a new child, so
+         aria-atomic stays false: only the new message is read, never the
+         whole stack). -->
+    <div class="toast-area" id="toastArea" aria-live="polite" aria-atomic="false"></div>
+    <!-- Screen-reader channel for cart mutations: the topbar badge and the
+         drawer's stepper values change silently for assistive tech, so
+         cart.js mirrors every count / line-quantity / total change into this
+         polite region. Visually hidden, never focused. -->
+    <p class="visually-hidden" id="cartAnnouncer" aria-live="polite" aria-atomic="true"></p>
   </body>
 </html>

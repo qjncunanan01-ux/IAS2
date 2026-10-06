@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Modular vanilla-JS e-commerce demo with customer and admin flows",
   "scripts": {
+    "start": "infisical run --env=dev -- npx http-server -p 8080",
     "test": "node --test",
     "fingerprint": "node tools/fingerprint.mjs --apply",
     "fingerprint:check": "node tools/fingerprint.mjs --check"

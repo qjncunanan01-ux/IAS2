@@ -8,9 +8,12 @@ Options -Indexes
 # Content-Security-Policy (mirror of the <meta> tag in index.html):
 # everything same-origin, no inline script, no inline styles,
 # no third-party code, no frames, no form hijacking.
+# connect-src additionally allows *.supabase.co (HTTPS + realtime WebSocket)
+# for the optional Supabase backend — data only: script-src stays 'self', so
+# no third-party code can execute (the client is vendored in assets/vendor/).
 # ============================================================
 <IfModule mod_headers.c>
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 
   # Never let the browser guess content types (blocks MIME confusion attacks)
   Header always set X-Content-Type-Options "nosniff"

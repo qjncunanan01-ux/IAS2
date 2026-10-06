@@ -2,9 +2,9 @@ import { state } from "../modules/state.js";
 import { save } from "../utils/storage.js?v=ff51bd7c";
 import { escapeHtml, escapeAttribute } from "../utils/helpers.js?v=7bbd16f9";
 import { refreshIcons } from "../utils/helpers.js?v=7bbd16f9";
-import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=083997a1";
+import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=ce0cbc8e";
 import { formatMoney, focusFirstFocusable } from "../utils/helpers.js?v=7bbd16f9";
-import { renderEmptyState } from "../components/render-helpers.js?v=ec7654a4";
+import { renderEmptyState } from "../components/render-helpers.js?v=7433b691";
 
 let els = {};
 
@@ -22,14 +22,19 @@ export function getCartLines() {
 }
 
 let lastCartCount = null;
+let lastCartTotal = null;
+// Map<itemId, { name, qty }> of the previous render — the diff source for
+// screen-reader announcements.
+let lastLineQtys = null;
 
 export function renderCart() {
   if (!els.cartLines || !els.cartCount || !els.cartTotal) return;
   
   const lines = getCartLines();
   const totalQty = lines.reduce((total, line) => total + line.qty, 0);
+  const grandTotal = lines.reduce((total, line) => total + line.item.price * line.qty, 0);
   els.cartCount.textContent = totalQty;
-  els.cartTotal.textContent = formatMoney(lines.reduce((total, line) => total + line.item.price * line.qty, 0));
+  els.cartTotal.textContent = formatMoney(grandTotal);
 
   // Bump the badge whenever the count changes (not on first paint).
   if (lastCartCount !== null && totalQty !== lastCartCount) {
@@ -37,7 +42,34 @@ export function renderCart() {
     void els.cartCount.offsetWidth; // restart the animation
     els.cartCount.classList.add("bump");
   }
+
+  // Announce cart mutations for screen readers: neither the badge nor the
+  // drawer's stepper <span> values are announced on change, so mirror them
+  // into the #cartAnnouncer live region (index.html). First paint is skipped
+  // (no startup spam), and a render that changed nothing — renderCart runs on
+  // every render, e.g. search or view switches — produces an empty diff and
+  // an identical summary, so the guard below stays silent: the region only
+  // speaks on a real quantity / removal / total change. Consecutive messages
+  // always differ (the text encodes qty + count + total, and a mutation
+  // changed at least one of them), so no duplicate-suppression trick needed.
+  if (els.cartAnnouncer && lastCartCount !== null) {
+    const currentQtys = new Map(lines.map(({ item, qty }) => [item.id, { name: item.name, qty }]));
+    const changes = [];
+    for (const [id, { name, qty }] of currentQtys) {
+      const prev = lastLineQtys?.get(id);
+      if (!prev || prev.qty !== qty) changes.push(`${name} quantity ${qty}`);
+    }
+    for (const [id, prev] of lastLineQtys || []) {
+      if (!currentQtys.has(id)) changes.push(`${prev.name} removed from cart`);
+    }
+    const summary = `Cart: ${totalQty} ${totalQty === 1 ? "item" : "items"}, total ${formatMoney(grandTotal)}`;
+    if (changes.length || totalQty !== lastCartCount || formatMoney(grandTotal) !== lastCartTotal) {
+      els.cartAnnouncer.textContent = `${changes.length ? `${changes.join(". ")}. ` : ""}${summary}.`;
+    }
+  }
   lastCartCount = totalQty;
+  lastCartTotal = formatMoney(grandTotal);
+  lastLineQtys = new Map(lines.map(({ item, qty }) => [item.id, { name: item.name, qty }]));
   
   els.cartLines.innerHTML = lines.length
     ? lines.map(({ item, qty }) => `

@@ -1,4 +1,5 @@
-import { refreshIcons, escapeHtml } from "../utils/helpers.js?v=7bbd16f9";
+import { refreshIcons } from "../utils/helpers.js?v=7bbd16f9";
+import { labUnsafeText } from "../utils/lab.js?v=8d55df8c";
 
 const toastTypes = {
   success: { icon: "check-circle", color: "var(--green)" },
@@ -13,7 +14,7 @@ function createToastElement(message, type = "info") {
   const { icon } = toastTypes[type] || toastTypes.info;
   toast.innerHTML = `
     <i data-lucide="${icon}" class="toast-icon"></i>
-    <span>${escapeHtml(message)}</span>
+    <span>${labUnsafeText(message)}</span>
   `;
   return toast;
 }

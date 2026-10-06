@@ -68,8 +68,8 @@
   --line: var(--color-neutral-200);
   --line-strong: var(--color-neutral-300);
 
-  --brand: var(--color-brand-600);
-  --brand-hover: var(--color-brand-700);
+  --brand: var(--color-brand-700);
+  --brand-hover: var(--color-brand-800);
   --brand-light: var(--color-brand-50);
   --brand-foreground: var(--color-neutral-0);
 
@@ -112,8 +112,11 @@
   --tertiary-hover: var(--color-sky-700);
   --tertiary-light: var(--color-sky-50);
 
-  /* Focus */
-  --focus-ring: 0 0 0 3px var(--color-brand-200);
+  /* Focus — dual ring (inner gap + strong outer edge) so the indicator keeps
+     3:1 against both the page and the element it surrounds; --focus-outline
+     is also what :focus-visible paints as its outline. */
+  --focus-outline: var(--color-brand-700);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus-outline);
   --focus-ring-dark: 0 0 0 3px var(--color-brand-800);
 
   /* Border Radius */
@@ -248,7 +251,8 @@
   --ink: var(--color-neutral-50);
   --ink-secondary: var(--color-neutral-400);
   --ink-tertiary: var(--color-neutral-500);
-  --muted: var(--color-neutral-500);
+  /* neutral-500 only reaches 4.18:1 on dark surfaces — step to 400. */
+  --muted: var(--color-neutral-400);
   --line: var(--color-neutral-800);
   --line-strong: var(--color-neutral-700);
 
@@ -283,7 +287,8 @@
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.4);
 
-  --focus-ring: 0 0 0 3px var(--color-brand-800);
+  --focus-outline: var(--color-brand-400);
+  --focus-ring: 0 0 0 2px var(--surface-strong), 0 0 0 4px var(--focus-outline);
 
   /* Accents - dark mode */
   --accent: var(--color-violet-400);
@@ -344,7 +349,12 @@
 }
 
 html {
-  min-width: 320px;
+  /* Layout floor, but never wider than the viewport that actually exists.
+     A bare `min-width: 320px` overflows horizontally by 8px at a 320px
+     viewport whenever a classic vertical scrollbar is present (clientWidth
+     = 312); overlay scrollbars on real phones mask it. `min()` degrades to
+     no floor on browsers that lack it, which is also safe. */
+  min-width: min(320px, 100%);
   font-size: 16px;
 }
 
@@ -404,8 +414,13 @@ a {
 }
 
 /* ===== FOCUS STYLES ===== */
+/* Two indicators on purpose: the offset outline always renders even where a
+   component's own box-shadow rule outranks :focus-visible (buttons), and the
+   dual ring provides the soft gap look. Both flip with the theme via
+   --focus-ring/--focus-outline and hold 3:1 against page and element. */
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--focus-outline);
+  outline-offset: 2px;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
 }
@@ -439,12 +454,69 @@ a {
   z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 18px;
-  padding: 16px clamp(16px, 4vw, 44px);
+  /* Mirror .content-shell (width: min(1180px, 100% - 32px), centered) so the
+     brand and the first product card share one vertical line instead of the
+     bar running edge-to-edge while the content is inset. */
+  padding: 10px max(16px, calc((100% - 1180px) / 2));
+  min-height: var(--header-height);
   border-bottom: 1px solid var(--topbar-line);
   background: var(--topbar-bg);
   backdrop-filter: blur(12px);
+}
+
+/* Account cluster sits at the end of the bar. On wide screens it reads the
+   same as before (nav + account pushed right); on narrow screens the nav can
+   scroll while this stays pinned. */
+.topbar-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Account menu wrapper. display:contents lays the badge and the auth button
+   out as direct children of .topbar-account on wide screens (and whenever
+   logged out), so the desktop topbar is unchanged. Only a signed-in user on a
+   narrow screen promotes this to the dropdown panel in the @820 block below,
+   which is also when the icon trigger becomes visible. */
+.topbar-account .account-menu {
+  display: contents;
+}
+
+.topbar-account .account-menu-toggle {
+  display: none;
+}
+
+/* Signed-in trigger: the user's initials sit in a round chip (ui.js sets
+   .has-initials and hides the generic lucide icon). The chip uses the
+   --brand / --brand-foreground pair — the same theme-aware, contrast-checked
+   combination primary buttons use (5.5:1 light, higher in dark), so no
+   extra color rules are needed. Empty span + no .has-initials = icon stays. */
+.topbar-account .account-menu-initials {
+  display: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.topbar-account .account-menu-toggle.has-initials .account-menu-initials {
+  display: grid;
+}
+
+/* lucide swaps the <i> for a direct-child <svg>; only hide it when the chip
+   actually replaced it. */
+.topbar-account .account-menu-toggle.has-initials > svg {
+  display: none;
 }
 
 .brand {
@@ -488,6 +560,10 @@ a {
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+  /* Pushes the nav (and, as its trailing sibling, the account cluster) to the
+     right now that the topbar is no longer space-between. */
+  margin-left: auto;
+  min-width: 0;
 }
 
 .nav-button,
@@ -537,9 +613,16 @@ a {
   font-size: 0.78rem;
 }
 
+/* The dark coral is light, so white on it only reaches 2.7:1 — flip the
+   badge text to ink so it clears 4.5:1 in dark mode. */
+[data-theme="dark"] .cart-button strong {
+  color: var(--color-neutral-950);
+}
+
+/* inline-block (not inline-flex): text-overflow is ignored on flex containers,
+   so a long "Name (role)" never actually ellipsized before. */
 .user-badge {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   min-height: 40px;
   max-width: 190px;
   padding: 0 12px;
@@ -547,6 +630,7 @@ a {
   border-radius: 8px;
   color: var(--muted);
   background: var(--surface);
+  line-height: 38px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1096,13 +1180,17 @@ a {
     border-color var(--duration-normal) var(--ease-out);
 }
 
-.product-card:hover {
+/* :focus-within matches the hover lift so a keyboard user tabs to Add or the
+   wishlist heart and the card responds the same way it does under a cursor. */
+.product-card:hover,
+.product-card:focus-within {
   transform: translateY(-4px);
   border-color: var(--color-brand-300);
   box-shadow: var(--shadow-lg);
 }
 
-[data-theme="dark"] .product-card:hover {
+[data-theme="dark"] .product-card:hover,
+[data-theme="dark"] .product-card:focus-within {
   border-color: var(--color-brand-700);
 }
 
@@ -1945,14 +2033,89 @@ button.alert-banner:hover {
 }
 
 @media (max-width: 820px) {
+  /* One compact row instead of the previous three-row stack (~220px -> 64px).
+     The nav scrolls sideways; the account cluster never leaves the screen. */
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
+    padding-block: 8px;
+  }
+
+  .brand {
+    min-width: auto;
+    flex-shrink: 0;
   }
 
   .nav-actions {
-    width: 100%;
+    flex: 1;
+    flex-wrap: nowrap;
     justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin-left: 0;
+    padding-bottom: 2px;
+  }
+
+  .nav-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-button {
+    flex-shrink: 0;
+  }
+
+  /* Real account menu replaces the old pinned badge/inline Logout: signed
+     in, the bar shows one icon trigger and the badge + Logout live in the
+     dropdown it opens. Logged out keeps the inline Login button, because the
+     wrapper stays display:contents. */
+  .topbar-account {
+    position: relative;
+  }
+
+  .topbar-account.is-authenticated .account-menu-toggle {
+    display: grid;
+  }
+
+  .topbar-account.is-authenticated .account-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 244px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-strong);
+    box-shadow: var(--shadow-lg);
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+    z-index: 30;
+  }
+
+  .topbar-account.is-authenticated .account-menu.is-open {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition-delay: 0s;
+  }
+
+  /* Inside the panel the badge stretches instead of keeping its inline pill
+     width cap, and the auth button spans the panel. */
+  .topbar-account .account-menu .user-badge {
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .topbar-account .account-menu #authButton {
+    width: 100%;
   }
 
   .store-toolbar {
@@ -2000,15 +2163,39 @@ button.alert-banner:hover {
   }
 }
 
+@media (max-width: 480px) {
+  /* Real phones: keep only the mark so the scrolling nav and the pinned
+     account button get the room. The link keeps aria-label="IAS2 Commerce home". */
+  .brand-copy {
+    display: none;
+  }
+}
+
 @media (max-width: 560px) {
   .content-shell {
     width: min(100% - 24px, 1180px);
     padding-top: 18px;
   }
 
+  /* Match the shell's 12px side margin, not the desktop 16px. */
+  .topbar {
+    padding-inline: 12px;
+  }
+
+  /* Collapse the labels to icon-only buttons, but keep the text in the
+     accessibility tree: display:none would strip the buttons' accessible
+     names (WCAG 4.1.2), so visually-hide instead. */
   .nav-button span,
   .primary-button span {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .brand {
@@ -2611,4 +2798,215 @@ button.alert-banner:hover {
   font-size: 0.82rem;
   color: var(--amber);
   margin-bottom: 10px;
+}
+
+/* ==========================================================================
+   PRACTICE MODE (?lab=1) — banner + simulated SQL console
+   Deliberate, flag-gated teaching affordances. Absent the flag none of this
+   markup exists in the DOM; the selectors stay here so the demo needs no
+   build step. Sits below toasts (80) so warnings are never covered.
+   ========================================================================== */
+
+.lab-banner {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 70;
+  display: grid;
+  gap: 12px;
+  width: min(420px, calc(100% - 36px));
+  padding: 14px 16px;
+  border: 1px solid var(--danger);
+  border-left-width: 5px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2xl);
+}
+
+.lab-banner.is-off {
+  border-color: var(--green);
+}
+
+.lab-banner-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.lab-banner-body svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--danger);
+}
+
+.lab-banner.is-off .lab-banner-body svg {
+  color: var(--green);
+}
+
+.lab-banner-body strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.lab-banner-body p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: var(--leading-snug);
+}
+
+.lab-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lab-panel {
+  width: min(760px, 100%);
+}
+
+.lab-query-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lab-sample-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Chip-shaped payload trigger; mirrors .chip but sized for a button. */
+.chip-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.lab-results {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.lab-placeholder {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.lab-sql-box {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.lab-sql-box code,
+.lab-sql-note code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.lab-sql-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.lab-notes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-note {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 0.85rem;
+  line-height: var(--leading-snug);
+}
+
+.lab-note.is-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger-hover);
+}
+
+.lab-note.is-warn {
+  border-left-color: var(--amber);
+  background: var(--amber-light);
+  color: var(--amber-hover);
+}
+
+.lab-note.is-safe {
+  border-left-color: var(--green);
+  background: var(--green-light);
+  color: var(--green-hover);
+}
+
+.lab-note.is-info {
+  color: var(--muted);
+}
+
+.lab-table-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.lab-table-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lab-empty-cell {
+  color: var(--muted);
+  text-align: center !important;
+}
+
+@media (max-width: 720px) {
+  .lab-banner {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+  }
+}
+
+/* The lucide icon inside the console's simulator warning needs an explicit
+   size — .alert-banner only sizes the <i> placeholder. */
+.lab-panel .alert-banner svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }

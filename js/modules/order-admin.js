@@ -2,11 +2,11 @@ import { state } from "./state.js";
 import { save } from "../utils/storage.js?v=ff51bd7c";
 import { createId, escapeHtml, escapeAttribute, formatMoney } from "../utils/helpers.js?v=7bbd16f9";
 import { refreshIcons, focusFirstFocusable, formatDate } from "../utils/helpers.js?v=7bbd16f9";
-import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=083997a1";
+import { showToast, showError, showSuccess, showWarning } from "../components/toast.js?v=ce0cbc8e";
 import { closeEntity } from "./modals.js?v=266d3e8d";
 import { validateQuantity } from "../utils/security.js?v=fbf2cc5d";
 import { getCurrentUser, isAdmin } from "./auth.js?v=aec43a94";
-import { render } from "./ui.js?v=a2fcb8e6";
+import { render } from "./ui.js?v=f811eaeb";
 
 let els = {};
 
@@ -266,7 +266,7 @@ function renderOrderDetail(order, user, currentUser, isAdminUser) {
             </div>
             <div class="detail-item">
               <span class="detail-label">Payment Reference</span>
-              <span class="detail-value">${escapeHtml(order.paymentReference || "N/A")}</span>
+              <span class="detail-value">${escapeHtml(order.paymentReference || (order.paymentMethod === "Cash on Delivery" ? "Pay on delivery" : "N/A"))}</span>
             </div>
             <div class="detail-item full-width">
               <span class="detail-label">Delivery Address</span>
